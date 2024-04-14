@@ -1,0 +1,278 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Android 10 Display System源码分析（1）：LCD显示原理（Android 10.0 &amp;&amp; Kernel 4.15） | zhoujinjian</title><meta name="keywords" content="Android,Linux,Graphics"><meta name="author" content="zhoujinjian"><meta name="copyright" content="zhoujinjian"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="注：文章都是通过阅读 Android  &amp;&amp; Linux 平台源码、各位前辈总结的资料、加上自己的思考分析总结出来的，其中难免有理不对的地方，欢迎大家批评指正。文章为个人学习、研究、欣赏之用。图文内容、源码整理自互联网，如有侵权，请联系删除（◕‿◕），转载请注明出处（ ©Android @Linux @Rockchip版权所有），谢谢(๑乛◡乛๑) 、（ ͡° ͜ʖ ͡°）、（ಡω">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Android 10 Display System源码分析（1）：LCD显示原理（Android 10.0 &amp;&amp; Kernel 4.15）">
+<meta property="og:url" content="https://zhoujinjian.com/posts/20210310/index.html">
+<meta property="og:site_name" content="zhoujinjian">
+<meta property="og:description" content="注：文章都是通过阅读 Android  &amp;&amp; Linux 平台源码、各位前辈总结的资料、加上自己的思考分析总结出来的，其中难免有理不对的地方，欢迎大家批评指正。文章为个人学习、研究、欣赏之用。图文内容、源码整理自互联网，如有侵权，请联系删除（◕‿◕），转载请注明出处（ ©Android @Linux @Rockchip版权所有），谢谢(๑乛◡乛๑) 、（ ͡° ͜ʖ ͡°）、（ಡω">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.22.jpg">
+<meta property="article:published_time" content="2021-03-10T01:25:00.000Z">
+<meta property="article:modified_time" content="2024-04-14T13:01:32.932Z">
+<meta property="article:author" content="zhoujinjian">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="Graphics">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.22.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://zhoujinjian.com/posts/20210310/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="preconnect" href="//zz.bdstatic.com"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: {"limitDay":500,"position":"top","messagePrev":"It has been","messageNext":"days since the last update, the content of the article may be outdated."},
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  ClickShowText: undefined,
+  lightbox: 'mediumZoom',
+  Snackbar: {"chs_to_cht":"你已切换为繁体","cht_to_chs":"你已切换为简体","day_to_night":"你已切换为深色模式","night_to_day":"你已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#121212","position":"bottom-left"},
+  justifiedGallery: {
+    js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+    css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+  },
+  isPhotoFigcaption: false,
+  islazyload: true,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2024-04-14 21:01:32'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sviptzk/HexoStaticFile@master/Hexo/css/flink.min.css"><meta name="generator" content="Hexo 5.0.2"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" data-lazy-src="/img/avatar.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">104</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fa fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fa fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fa fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 媒体</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/movies/"><i class="fa-fw fa fa-film"></i><span> 电影</span></a></li><li><a class="site-page" href="/books/"><i class="fa-fw fas fa-book"></i><span> 书单</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/home/"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fa fa-heart"></i><span> 关于</span></a></div><div class="menus_item"><a class="site-page" href="/navigation/"><i class="fa-fw fab fa-safari"></i><span> 导航</span></a></div></div></div></div><div id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.22.jpg)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">zhoujinjian</a></span><span id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fa fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fa fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fa fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 媒体</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/movies/"><i class="fa-fw fa fa-film"></i><span> 电影</span></a></li><li><a class="site-page" href="/books/"><i class="fa-fw fas fa-book"></i><span> 书单</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/home/"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fa fa-heart"></i><span> 关于</span></a></div><div class="menus_item"><a class="site-page" href="/navigation/"><i class="fa-fw fab fa-safari"></i><span> 导航</span></a></div></div><span class="close" id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></span></span></nav><div id="post-info"><h1 class="post-title">Android 10 Display System源码分析（1）：LCD显示原理（Android 10.0 &amp;&amp; Kernel 4.15）</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-03-10T01:25:00.000Z" title="发表于 2021-03-10 09:25:00">2021-03-10</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2024-04-14T13:01:32.932Z" title="更新于 2024-04-14 21:01:32">2024-04-14</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Display/">Display</a></span></div><div class="meta-secondline"> <span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>注：文章都是通过阅读 Android  &amp;&amp; Linux 平台源码、各位前辈总结的资料、加上自己的思考分析总结出来的，其中难免有理不对的地方，欢迎大家批评指正。<strong>文章为个人学习、研究、欣赏之用。图文内容、源码整理自互联网，如有侵权，请联系删除（◕‿◕）</strong>，转载请注明出处（ ©Android @Linux @Rockchip版权所有），谢谢(๑乛◡乛๑) 、（ ͡° ͜ʖ ͡°）、（ಡωಡ）！！！。<br>（==<strong>文章基于 Kernel-4.4</strong>==）&amp;&amp;（==<strong>文章基于 Android-8.1</strong>==）<br><a target="_blank" rel="noopener" href="http://wiki.t-firefly.com/zh_CN/Firefly-RK3399/compile_android8.1_firmware.html#">【开发板 - Firefly-RK3399 7.85寸1024x768显示屏模组（MIPI接口）】</a></p>
+<p>正是由于前人的分析和总结，帮助我节约了大量的时间和精力，特别感谢！！！</p>
+<p><a target="_blank" rel="noopener" href="https://animagraffs.com/flat-screen-displays/">（1）【How a Flat Screen Display works】</a><br><a target="_blank" rel="noopener" href="https://www.digi.com/resources/documentation/digidocs/90001945-13/reference/yocto/r_an_adding_custom_display.htm">（2）【Adding a custom display】</a><br><a target="_blank" rel="noopener" href="https://commons.wikimedia.org/wiki/File:Liquid_Crystal_Display_Macro_Example_zoom_2.jpg">（3）【Liquid Crystal Display Macro Example 】</a><br><a target="_blank" rel="noopener" href="https://pid.samsungdisplay.com/en/learning-center/blog/lcd-structure">（4）【How-it-works: LCD screens explained】</a><br><a target="_blank" rel="noopener" href="https://pid.samsungdisplay.cn/learning-center/white-papers/va-vs-ips">（5）【显示面板技术说明 - LCD模式】</a><br><a target="_blank" rel="noopener" href="https://pid.samsungdisplay.cn/learning-center/blog/lcd-structure">（6）【了解当今LCD屏技术】</a></p>
+<hr>
+<p>==源码（部分）==：</p>
+<hr>
+<h4 id="（一）、了解当今LCD屏技术"><a href="#（一）、了解当今LCD屏技术" class="headerlink" title="（一）、了解当今LCD屏技术"></a>（一）、了解当今LCD屏技术</h4><h5 id="（1）、LCD-panels"><a href="#（1）、LCD-panels" class="headerlink" title="（1）、LCD panels"></a>（1）、LCD panels</h5><p>An LCD panel is a matrix of pixels that are divided into rows and columns. These pixels are individually painted according to different signals and timing parameters, and you can control each pixel’s color individually. The panel is continuously refreshed, typically at around 60 Hz, from the contents of the frame buffer memory. Each memory location on the frame buffer corresponds to a pixel on the LCD panel.</p>
+<p><strong>工作原理：LCD屏说明</strong><br>液晶显示器（LCD）是一种利用液晶的电光特性将电刺激转换为视觉信号的装置。它助你将想象力与创意变为现实，并将其显示在屏幕上。</p>
+<p>创造这种“神奇”体验的四个基本原则是：</p>
+<blockquote>
+<p>光可以极化。<br>液晶取向可以通过电流改变。<br>液晶可以操纵（透射或阻挡）偏振光。<br>有一些可以导电的透明物质。<br>液晶分子排列可以通过外部电场操纵，这使得液晶显示器可以滴答作响。液晶（LC）是一种状态下的物质，具有常规液体和固体晶体的性质。液晶可能像液体一样流动，但其分子可以以晶体的方式取向。 </p>
+</blockquote>
+<p>虽然LCD构成了显示面板的核心，但是还有其他光电和电路元件在显示效果上发挥重要作用。</p>
+<p>想了解更多各种液晶模式吗？<a target="_blank" rel="noopener" href="https://pid.samsungdisplay.cn/learning-center/white-papers/va-vs-ips">那就阅读这份有关各种LCD模式的白皮书</a>。</p>
+<h5 id="（2）、您的LCD屏幕内是怎样运作的？"><a href="#（2）、您的LCD屏幕内是怎样运作的？" class="headerlink" title="（2）、您的LCD屏幕内是怎样运作的？"></a>（2）、您的LCD屏幕内是怎样运作的？</h5><p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.LCD_Function.gif"></p>
+<p>当一束光通过LCD屏幕的各个组件时，我们通过它来了解：</p>
+<ol>
+<li>当屏幕通电时，背光LED会发出白光。</li>
+<li>光进入导光板（LGP），在内部反射，并均匀地分布在面板的上表面上。</li>
+<li>扩散片进一步分散光，所以LGP外面没有观察到热点。 </li>
+<li>DBEF回收散射光，棱镜片确保光线聚焦并指向观看者。</li>
+<li>底部偏光片允许垂直波长光通过，同时阻挡其他取向。</li>
+<li>然后垂直偏振光通过液晶层。</li>
+<li>然后通过施加适当的电压通过TFT和公用电极来操纵液晶。液晶能在不同程度上阻挡白光。每个子像素前面的滤光片仅允许8通过适合其颜色的一系列波长。为了控制每个子像素的亮度，将液晶盒通电或断电，以便阻挡或透射光。</li>
+<li>光通过液晶和滤光片，产生原红、原绿及原蓝三色。</li>
+<li>然后通过顶部偏光片对偏振光进行滤光，仅透射水平偏振光。</li>
+<li>最后，观看者便能在数字显示器上享受鲜艳的色彩、高对比度和清晰的图像。<h5 id="（3）、LCD组件解构"><a href="#（3）、LCD组件解构" class="headerlink" title="（3）、LCD组件解构"></a>（3）、LCD组件解构</h5></li>
+</ol>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.LCD_Component_Layers.gif"></p>
+<blockquote>
+<p><strong>底部底盘：</strong>底部底盘保护LCD显示组件，并作为底座将组件放在一起。</p>
+</blockquote>
+<blockquote>
+<p><strong>背光：</strong>液晶本身并不发光，所以需要另外的方式的供应光才能观看屏幕。光源可以是环境光或是位于屏幕背面或侧面的人造光源。LCD是一种透射显示器，因此需要外部光源。</p>
+</blockquote>
+<p>LED背光式LCD显示器是一种使用LED背光的平板显示器。使用LED背光可使面板更薄、功耗更低、散热更好、显示更亮、对比度更好。发光二极管（LED）为显示器提供光源。当今最常见的背光布置是边缘式LED（更薄型材）或直下式LED（用于高亮度显示器或窄边框视频壁挂式显示器）。背光设计对于确保良好的色彩再现和广泛的色域十分重要。背光看起来是白色的，但并不意味着它具有广泛而均匀的光谱 — 它的“高峰”光谱可能极不规则（CCFL灯通常是这样）。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.Edge_vs_Direct_backlight.png"></p>
+<blockquote>
+<p><strong>反射片：</strong>反射片提供LCD背光回收。它通常称为DBEF（双亮度增强胶片）。DBEF增加轴上亮度，因此可以通过LCD透射更多的光。通常，一个BEF可将亮度提高40％ - 60％。在一些应用中，使用两个BEF来提高亮度透射率。</p>
+</blockquote>
+<blockquote>
+<p><strong>导光板（LGP）：</strong>LGP是一种丙烯酸板，通常由纯PMMA（聚甲基丙烯酸甲酯）树脂制成。PMMA非常透明，耐候性好。导光板是刻有凸起图案的塑料板，可以反射特定方向的光。LGP将线形光源转换成均匀的平面形光源。LPG面板的底部刻有线阵，将光线引导到前面，这称为V切割。从侧面进入导光层的光将从前面射出。</p>
+</blockquote>
+<blockquote>
+<p><strong>扩散片：</strong>扩散片设计用于均匀分解和分布光，以提供柔和的光线。扩散片将光线均匀地铺展在屏幕尺寸上，形成一个坚实的、均匀照明的方形，并减少LED热点。</p>
+</blockquote>
+<blockquote>
+<p><strong>棱镜片：</strong>在液晶显示器导光板的上表面上提供棱镜片。棱镜片前表面上有小型角状脊，可再循环离轴光，直到以最佳视角透射。光波以对观看者来说最亮的角度射出，或者再次通过背光照明层发送，直至正确射出。</p>
+</blockquote>
+<blockquote>
+<p><strong>底部偏光片：</strong>偏光片的制造如下：通过拉伸塑料状材料来延长其纤维，然后将材料浸入碘中进一步延长，并将材料的纤维组织成为人眼不可见的黑色平行线网格。这就像一个滤光片，仅允许垂直方向的光波通过，而阻挡其余的光波。</p>
+</blockquote>
+<blockquote>
+<p><strong>底玻璃基板（背板）：</strong>特殊玻璃用作薄膜晶体管（TFT）制造工艺的起始基板。液晶通常“夹在”两个偏振滤光片之间，彼此成90度角。偏振光从背光式LED进入液晶背面。当向列晶体未通电时，便将偏振光“扭转”90度，使其通过第二偏振滤光片。当电场应用于液晶时，光不会受到扭曲，从而被第二偏振滤光片阻挡。</p>
+</blockquote>
+<blockquote>
+<p><strong>薄膜晶体管：</strong>一种晶体管，其主动载流层是一层薄膜（通常是硅薄膜 - Si），与MOSFET相反，其在硅晶片上制成并使用体硅作为有源层。在平板显示器中，光必须能够通过基板材料到达观看者。不透明硅片显然不适合这些透射显示器。玻璃是最常用的起始基板，因为它高度透明并与常规的半导体处理步骤兼容。由于玻璃不像硅一样属于半导体，所以在顶部沉积硅薄膜，并使用该薄膜制造晶体管。TFT帮助操纵每个子像素处的电压来编排显示图像。</p>
+</blockquote>
+<p>三星显示器的PID面板是 有源矩阵TFT，有源矩阵LCD显示面板依靠薄膜晶体管（TFT）保持扫描之间的每个像素状态，同时改善响应时间。TFT是一种微型开关晶体管（及相关联的电容器），布置在玻璃基板上的矩阵中，以控制每个元素（或像素）。打开其中一个TFT将激活相关像素。使用嵌入显示面板本身的有源开关装置来控制每个图像元件，有助于减少相邻像素之间的串扰，同时显着地改善显示响应时间。通过以非常小的增量仔细调节施加的电压量，可以产生灰度效应。尽管LCD标牌中使用的高端LCD显示器可以支持高达1024个不同的亮度级别，而当今大多数液晶显示器每像素最少支持256级亮度。这导致灰度性能提升，因此提升主要全暗或全亮的图像区域中的图像细节。</p>
+<blockquote>
+<p><strong>液晶：</strong>液晶在施加的电场下改变取向，从而阻挡或通过光。液晶是一种棒状分子，向其施加电流时会发生扭曲。每个晶体的作用就像一个快门，要么允许光线通过要么阻挡光线。透明和深色晶体的图案形成图像。LCD显示器中的液晶是自然扭曲的形式。</p>
+</blockquote>
+<blockquote>
+<p><strong>公用电极：</strong>由用于将电压施加到液晶层的透明氧化铟锡（ITO）制成。对于在整个LCD屏幕上保持均匀像素电压，公用电极起着关键作用。在彩色屏幕中，ITO现在分为红色、绿色和蓝色（RGB）三种颜色。</p>
+</blockquote>
+<blockquote>
+<p><strong>滤光片（RGB）：</strong>滤光片为LCD上的图像创建颜色。滤光片由红色、绿色和蓝色颜料组成，并与细胞内的特定子像素对准。该滤光片由薄玻璃基板和彩色光阻组成。在玻璃基板上形成三种彩色光阻（红、绿、蓝）图案。R、G、B图案称为子像素。可以显示颜色的LCD必须具有三个具有红色、绿色和蓝色滤光片的子像素，以创建每个颜色像素。通过仔细控制和变化施加的电压，每个子像素的强度可以超过256色。组合子像素可以生成1680万种颜色的可能调色板（256种红色x 256种绿色x 256种蓝色，8位色深）。这些彩色显示器占用了大量的晶体管（TFT）。典型的笔记本电脑支持高达1,920x180的分辨率。如果我们将1,920列乘以1,080行乘以3个子像素，则将有6,220,800个晶体管蚀刻到背板玻璃上。</p>
+</blockquote>
+<blockquote>
+<p><strong>顶部玻璃基板：</strong>用于滤光片制造工艺的特殊玻璃。</p>
+</blockquote>
+<blockquote>
+<p><strong>顶部偏光片：</strong>光在顶部偏光片处水平偏振。偏光片的功能是改善颜色和清晰度，使得可以看到LCD的屏幕。如果从LCD中移除偏光片，则无法识别字母或图形。当两个偏光膜平行放置在另一个的顶部时，LCD的屏幕最亮。然而，当放置在彼此的顶部并且垂直时，屏幕看起来就像是黑的。因此，如上所述，LCD的光学特性，如亮度和对比度，受到偏光膜性质的严重影响。</p>
+</blockquote>
+<blockquote>
+<p><strong>顶部机箱或机架：</strong>顶部机箱位于顶部，并使用开放式框架。</p>
+</blockquote>
+<h5 id="（4）、液晶运行模式"><a href="#（4）、液晶运行模式" class="headerlink" title="（4）、液晶运行模式"></a>（4）、液晶运行模式</h5><p><strong>面板中的液晶运行模式是显示面板的关键特性，对于其性能和功能起决定作用。</strong> 当前大型和商用显示面板中使用最多的是VA和IPS技术。</p>
+<h6 id="4-1、垂直取向-VA"><a href="#4-1、垂直取向-VA" class="headerlink" title="4.1、垂直取向(VA)"></a>4.1、<strong>垂直取向(VA)</strong></h6><p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.samsungpid-va-technology.jpg"></p>
+<p>在垂直取向(VA)模式中，液晶与玻璃基板自然垂直对齐，也被称为垂面排列。在没有外部电压的情况下，偏振光在无偏光变化的情况下穿过面板，然后被第二组偏光片完全阻挡（与第一组偏光片成90度角），形成完美的黑色。电场的应用会使液晶分子旋转到水平位置，让光线完全穿过并显示白色。</p>
+<p>与TFT升级、雾面涂层、现代背光装置和像素设计相结合后，赋予了VA LCD超高的对比度，给人印象深刻的视觉体验。随着技术的进步，其响应时间和像素延迟大幅缩短，显示滞后也不复存在。帧率和动态画面响应时间也变得更加顺畅。VA抗残影的能力更强，因为垂面排列可以加宽散布面。VA还能实现最佳的对比度，很多显示专业人士认为它在商用显示面板的显示品质方面排名第一。</p>
+<h6 id="4-2、共面转换-IPS"><a href="#4-2、共面转换-IPS" class="headerlink" title="4.2、共面转换(IPS)"></a>4.2、<strong>共面转换(IPS)</strong></h6><p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.samsungpid-ips-technology.jpg"></p>
+<p>共面转换(IPS)模式最初是为克服扭曲向列LCD中出现的窄视角问题而开发的。该技术通过改变施加的电压使液晶在与玻璃基板平行的面上排列，从而可更改共面上液晶分子的方向。IPS也被称为水平排列。[3] 由于偏光片位于同一面上，转换效果由液晶分子围绕垂直于其长度方向的轴旋转而实现的。[2] VA模式中的液晶分子与偏光轴对齐，但IPS中的液晶分子与偏光轴偏离。</p>
+<p>IPS矩阵不仅晶体结构不同，而且一个晶圆上电极的位置也不同，会导致占用更多空间，导致屏幕对比度和亮度更低。该技术的另一个主要缺点在于响应时间长，有时G到G长达60毫米。在新一代产品中，该技术缩短了响应时间，但仍高于VA面板的平均响应时间。[6] 这往往会导致残影，特别是在零售环境下，如长时间显示特惠或促销静态图像时。</p>
+<p>除低对比度外，IPS LCD往往还具有黑色纯度低的问题。现代IPS技术的透过率相比最初的技术提升了约30%。虽然这有助于增加对比度，但仍比不上VA面板的对比度。最众所周知的一个缺点是，从侧面看深色图像时IPS面板会出现白光，也被称为IPS光。[6] 由于液晶的特性，从侧面看时IPS虽仍可保持色彩均匀性，但从这些角度看其亮度会降低。</p>
+<h5 id="（5）、LCD色彩生成原理"><a href="#（5）、LCD色彩生成原理" class="headerlink" title="（5）、LCD色彩生成原理"></a>（5）、LCD色彩生成原理</h5><p>传统的LCD显示屏有一个由许多**发光二极管(LED)**组成的背光系统。这些LED是蓝色的，但被绿色和红色荧光体覆盖，以产生白光。通过改变荧光体的浓度，还可以改变和控制LED的色温。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.color-displays-wp-color-expression-lcd-panel-red.gif"></p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.color-displays-wp-color-expression-lcd-panel-green.gif"></p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.color-displays-wp-color-expression-lcd-panel-blue.gif"></p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.color-displays-wp-color-expression-lcd-panel-white.gif"></p>
+<p>从LED发出的光通过偏光滤光片后射到<strong>液晶(LC)**上，液晶挡住光线或让光线通过红、绿、蓝</strong>彩色滤光片(CF)<strong>。这称为</strong>子像素**。因为红色、绿色和蓝色可混合产生任何颜色，由三个子像素形成的每个颜色像素可创造出不同的色彩，然后形成图像。通过控制和改变电压可调节各子像素的强度，从而使其更亮或更暗，进而确定在显示屏上产生什么颜色。通过子像素的不同组合可产生数百万种颜色。</p>
+<p>这种使用白光LED的机制简单、廉价 - 因此它在显示行业中得到了广泛采用，包括商用显示屏、电视、显示器、笔记本电脑、平板电脑和智能手机。</p>
+<p>Macro shot of an LCD monitor showing the red, green and blue elements., with zoom-in(LCD显示器放大):</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.Liquid_Crystal_Display_Macro_Example_zoom_2.jpg"></p>
+<h4 id="（二）、How-a-Flat-Screen-Display-works"><a href="#（二）、How-a-Flat-Screen-Display-works" class="headerlink" title="（二）、How a Flat Screen Display works"></a>（二）、How a Flat Screen Display works</h4><p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.flat-panel.gif"></p>
+<h4 id="（三）、LCD-displays-signals-and-timing-parameters"><a href="#（三）、LCD-displays-signals-and-timing-parameters" class="headerlink" title="（三）、LCD displays signals and timing parameters"></a>（三）、LCD displays signals and timing parameters</h4><h5 id="（1）、LCD-displays-signals-and-timing-parameters"><a href="#（1）、LCD-displays-signals-and-timing-parameters" class="headerlink" title="（1）、LCD displays signals and timing parameters"></a>（1）、LCD displays signals and timing parameters</h5><p>The LCD controller paints frames from left to right and from top to bottom. Signals used on a typical LCD display include:</p>
+<ul>
+<li><strong>HSYNC:</strong> Horizontal synch (FPLINE or LP) indicates the end of a line and the beginning of the next line.</li>
+<li><strong>VSYNC:</strong> Vertical synch (FPFRAME, FLM, SPS or TV) indicates the end of the current frame. The next line index should restart at zero in the upper-left corner.</li>
+<li><strong>DRDY:</strong> Data ready or data enable (DE). The data in the bus is valid and must be latched using the PIXCLK signal. While it’s active, each pulse draws a pixel.</li>
+<li><strong>PIXCLK:</strong> Specifies the placing of RGB data on the bus.</li>
+<li><strong>RGB data:</strong> Red, green, and blue pixel data. Usually 24 data lines for RGB888, 16 data lines for RGB666.</li>
+</ul>
+<h5 id="（2）、Typical-timing-parameters-include"><a href="#（2）、Typical-timing-parameters-include" class="headerlink" title="（2）、Typical timing parameters include"></a>（2）、Typical timing parameters include</h5><ul>
+<li><strong>Horizontal Back Porch (HBP):</strong> Number of PIXCLK pulses between HSYNC signal and the first valid pixel data.</li>
+<li><strong>Horizontal Front porch (HFP):</strong> Number of PIXCLK pulses between the last valid pixel data in the line and the next HSYNC pulse.</li>
+<li><strong>Vertical Back Porch (VBP):</strong> Number of lines (HSYNC pulses) from a VSYNC signal to the first valid line.</li>
+<li><strong>Vertical Front Porch (VFP):</strong> Number of lines (HSYNC pulses) between the last valid line of the frame and the next VSYNC pulse.</li>
+<li><strong>VSYNC length:</strong> Number of HSYNC pulses when a VSYNC signal is active.</li>
+<li><strong>HSYNC length:</strong> Number of PIXCLK pulses when a HSYNC signal is active.</li>
+<li><strong>Active frame width (hactive):</strong> Horizontal resolution.</li>
+<li><strong>Active frame height (vactive):</strong> Vertical resolution.</li>
+</ul>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/zjj.sys.display.8.1.lcd/zjj.display.sys.dwg_lcd_display_signals.jpg"></p>
+<p>Every manufacturer provides display timings in a slightly different way and some provide more detail than others. Most LCD panels work with a range of timing parameters.</p>
+<p>This application note provides a couple of examples to help you further understand these concepts.</p>
+<h4 id="（四）、参考文档："><a href="#（四）、参考文档：" class="headerlink" title="（四）、参考文档："></a>（四）、参考文档：</h4><p><a target="_blank" rel="noopener" href="https://animagraffs.com/flat-screen-displays/">（1）【How a Flat Screen Display works】</a><br><a target="_blank" rel="noopener" href="https://www.digi.com/resources/documentation/digidocs/90001945-13/reference/yocto/r_an_adding_custom_display.htm">（2）【Adding a custom display】</a><br><a target="_blank" rel="noopener" href="https://commons.wikimedia.org/wiki/File:Liquid_Crystal_Display_Macro_Example_zoom_2.jpg">（3）【Liquid Crystal Display Macro Example 】</a><br><a target="_blank" rel="noopener" href="https://pid.samsungdisplay.com/en/learning-center/blog/lcd-structure">（4）【How-it-works: LCD screens explained】</a><br><a target="_blank" rel="noopener" href="https://pid.samsungdisplay.cn/learning-center/white-papers/va-vs-ips">（5）【显示面板技术说明 - LCD模式】</a><br><a target="_blank" rel="noopener" href="https://pid.samsungdisplay.cn/learning-center/blog/lcd-structure">（6）【了解当今LCD屏技术】</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">zhoujinjian</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://zhoujinjian.com/posts/20210310/">https://zhoujinjian.com/posts/20210310/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://zhoujinjian.com" target="_blank">zhoujinjian</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Android/">Android</a><a class="post-meta__tags" href="/tags/Linux/">Linux</a><a class="post-meta__tags" href="/tags/Graphics/">Graphics</a></div><div class="post_share"><div class="social-share" data-image="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.22.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/posts/20210410/"><img class="prev-cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.23.jpg" onerror="onerror=null;src='/img/404.jpg'"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">Android 10 Display System源码分析（2）：Display System 精彩世界（Android 10.0 &amp;&amp; Kernel 4.15）</div></div></a></div><div class="next-post pull-right"><a href="/posts/20210308/"><img class="next-cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.21.jpg" onerror="onerror=null;src='/img/404.jpg'"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Ubuntu 16.04 搭建 Khadas-Edge-V-Android10编译环境</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/posts/20210410/" title="Android 10 Display System源码分析（2）：Display System 精彩世界（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.23.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-04-10</div><div class="title">Android 10 Display System源码分析（2）：Display System 精彩世界（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210510/" title="Android 10 Display System源码分析（3）：U-boot Display 显示过程源码分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.24.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-05-10</div><div class="title">Android 10 Display System源码分析（3）：U-boot Display 显示过程源码分析（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210610/" title="Android 10 Display System源码分析（4）：DRM/KMS分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.25.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-06-10</div><div class="title">Android 10 Display System源码分析（4）：DRM/KMS分析（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210710/" title="Android 10 Display System源码分析（5）：ModeTest分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.26.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-07-10</div><div class="title">Android 10 Display System源码分析（5）：ModeTest分析（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210810/" title="Android 10 Display System源码分析（6）：【DRM/KMS】HWComposer && Gralloc2 分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.27.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-08-10</div><div class="title">Android 10 Display System源码分析（6）：【DRM/KMS】HWComposer && Gralloc2 分析（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210910/" title="Android 10 Display System源码分析（7）：Native Surface创建 && SurfaceFlinger合成流程分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.28.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-09-10</div><div class="title">Android 10 Display System源码分析（7）：Native Surface创建 && SurfaceFlinger合成流程分析（Android 10.0 && Kernel 4.15）</div></div></a></div></div></div></div><div class="aside_content" id="aside_content"><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="card-content"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%88%E4%B8%80%EF%BC%89%E3%80%81%E4%BA%86%E8%A7%A3%E5%BD%93%E4%BB%8ALCD%E5%B1%8F%E6%8A%80%E6%9C%AF"><span class="toc-number">1.</span> <span class="toc-text">（一）、了解当今LCD屏技术</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%EF%BC%881%EF%BC%89%E3%80%81LCD-panels"><span class="toc-number">1.1.</span> <span class="toc-text">（1）、LCD panels</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%EF%BC%882%EF%BC%89%E3%80%81%E6%82%A8%E7%9A%84LCD%E5%B1%8F%E5%B9%95%E5%86%85%E6%98%AF%E6%80%8E%E6%A0%B7%E8%BF%90%E4%BD%9C%E7%9A%84%EF%BC%9F"><span class="toc-number">1.2.</span> <span class="toc-text">（2）、您的LCD屏幕内是怎样运作的？</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%EF%BC%883%EF%BC%89%E3%80%81LCD%E7%BB%84%E4%BB%B6%E8%A7%A3%E6%9E%84"><span class="toc-number">1.3.</span> <span class="toc-text">（3）、LCD组件解构</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%EF%BC%884%EF%BC%89%E3%80%81%E6%B6%B2%E6%99%B6%E8%BF%90%E8%A1%8C%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.4.</span> <span class="toc-text">（4）、液晶运行模式</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#4-1%E3%80%81%E5%9E%82%E7%9B%B4%E5%8F%96%E5%90%91-VA"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1、垂直取向(VA)</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#4-2%E3%80%81%E5%85%B1%E9%9D%A2%E8%BD%AC%E6%8D%A2-IPS"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2、共面转换(IPS)</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%EF%BC%885%EF%BC%89%E3%80%81LCD%E8%89%B2%E5%BD%A9%E7%94%9F%E6%88%90%E5%8E%9F%E7%90%86"><span class="toc-number">1.5.</span> <span class="toc-text">（5）、LCD色彩生成原理</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%88%E4%BA%8C%EF%BC%89%E3%80%81How-a-Flat-Screen-Display-works"><span class="toc-number">2.</span> <span class="toc-text">（二）、How a Flat Screen Display works</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%88%E4%B8%89%EF%BC%89%E3%80%81LCD-displays-signals-and-timing-parameters"><span class="toc-number">3.</span> <span class="toc-text">（三）、LCD displays signals and timing parameters</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%EF%BC%881%EF%BC%89%E3%80%81LCD-displays-signals-and-timing-parameters"><span class="toc-number">3.1.</span> <span class="toc-text">（1）、LCD displays signals and timing parameters</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%EF%BC%882%EF%BC%89%E3%80%81Typical-timing-parameters-include"><span class="toc-number">3.2.</span> <span class="toc-text">（2）、Typical timing parameters include</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%EF%BC%88%E5%9B%9B%EF%BC%89%E3%80%81%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3%EF%BC%9A"><span class="toc-number">4.</span> <span class="toc-text">（四）、参考文档：</span></a></li></ol></div></div></div><div class="card-widget card-recent-post"><div class="card-content"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/posts/20240225/" title="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.64.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序"/></a><div class="content"><a class="title" href="/posts/20240225/" title="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序">Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序</a><time datetime="2024-02-24T16:00:00.000Z" title="发表于 2024-02-25 00:00:00">2024-02-25</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240224/" title="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.63.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍"/></a><div class="content"><a class="title" href="/posts/20240224/" title="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍">Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍</a><time datetime="2024-02-23T16:00:00.000Z" title="发表于 2024-02-24 00:00:00">2024-02-24</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240223/" title="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.62.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识"/></a><div class="content"><a class="title" href="/posts/20240223/" title="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识">Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识</a><time datetime="2024-02-22T16:00:00.000Z" title="发表于 2024-02-23 00:00:00">2024-02-23</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240222/" title="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.61.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识"/></a><div class="content"><a class="title" href="/posts/20240222/" title="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识">Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识</a><time datetime="2024-02-21T16:00:00.000Z" title="发表于 2024-02-22 00:00:00">2024-02-22</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240221/" title="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.60.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识"/></a><div class="content"><a class="title" href="/posts/20240221/" title="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识">Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识</a><time datetime="2024-02-20T16:00:00.000Z" title="发表于 2024-02-21 00:00:00">2024-02-21</time></div></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By zhoujinjian</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js"></script><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module" defer></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload/dist/lazyload.iife.min.js"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/js/calendar.js"></script><script src="/js/languages.js"></script><script src="/js/fishes.js"></script><script>(function(){
+  const bp = document.createElement('script');
+  const curProtocol = window.location.protocol.split(':')[0];
+  if (curProtocol === 'https'){
+  bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+  bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+  bp.dataset.pjax = ''
+  const s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(bp, s);
+})()</script></div></body></html>

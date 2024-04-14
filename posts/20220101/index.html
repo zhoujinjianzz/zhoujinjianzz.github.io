@@ -1,0 +1,560 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Android 10 Camera源码分析1：MIPI CSI2总结基于DPHY2.1(转载) | zhoujinjian</title><meta name="keywords" content="Camera"><meta name="author" content="zhoujinjian"><meta name="copyright" content="zhoujinjian"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="注：文章都是通过阅读各位前辈总结的资料 Android 10.0 &amp;&amp; Linux（Kernel 4.19）Rockchip平台源码、加上自己的思考分析总结出来的，其中难免有理解不对的地方，欢迎大家批评指正。文章为个人学习、研究、欣赏之用，图文内容整理自互联网，如有侵权，请联系删除（◕‿◕），转载请注明出处（©Rockchip ©Android @Linux 版权所有），谢谢。（&#x3D;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Android 10 Camera源码分析1：MIPI CSI2总结基于DPHY2.1(转载)">
+<meta property="og:url" content="https://zhoujinjian.com/posts/20220101/index.html">
+<meta property="og:site_name" content="zhoujinjian">
+<meta property="og:description" content="注：文章都是通过阅读各位前辈总结的资料 Android 10.0 &amp;&amp; Linux（Kernel 4.19）Rockchip平台源码、加上自己的思考分析总结出来的，其中难免有理解不对的地方，欢迎大家批评指正。文章为个人学习、研究、欣赏之用，图文内容整理自互联网，如有侵权，请联系删除（◕‿◕），转载请注明出处（©Rockchip ©Android @Linux 版权所有），谢谢。（&#x3D;">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.31.jpg">
+<meta property="article:published_time" content="2021-12-31T17:01:00.000Z">
+<meta property="article:modified_time" content="2024-04-14T13:01:32.928Z">
+<meta property="article:author" content="zhoujinjian">
+<meta property="article:tag" content="Camera">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.31.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://zhoujinjian.com/posts/20220101/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="preconnect" href="//zz.bdstatic.com"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: {"limitDay":500,"position":"top","messagePrev":"It has been","messageNext":"days since the last update, the content of the article may be outdated."},
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  ClickShowText: undefined,
+  lightbox: 'mediumZoom',
+  Snackbar: {"chs_to_cht":"你已切换为繁体","cht_to_chs":"你已切换为简体","day_to_night":"你已切换为深色模式","night_to_day":"你已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#121212","position":"bottom-left"},
+  justifiedGallery: {
+    js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+    css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+  },
+  isPhotoFigcaption: false,
+  islazyload: true,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2024-04-14 21:01:32'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sviptzk/HexoStaticFile@master/Hexo/css/flink.min.css"><meta name="generator" content="Hexo 5.0.2"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" data-lazy-src="/img/avatar.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">104</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fa fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fa fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fa fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 媒体</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/movies/"><i class="fa-fw fa fa-film"></i><span> 电影</span></a></li><li><a class="site-page" href="/books/"><i class="fa-fw fas fa-book"></i><span> 书单</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/home/"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fa fa-heart"></i><span> 关于</span></a></div><div class="menus_item"><a class="site-page" href="/navigation/"><i class="fa-fw fab fa-safari"></i><span> 导航</span></a></div></div></div></div><div id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.31.jpg)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">zhoujinjian</a></span><span id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fa fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fa fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fa fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 媒体</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/movies/"><i class="fa-fw fa fa-film"></i><span> 电影</span></a></li><li><a class="site-page" href="/books/"><i class="fa-fw fas fa-book"></i><span> 书单</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/home/"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fa fa-heart"></i><span> 关于</span></a></div><div class="menus_item"><a class="site-page" href="/navigation/"><i class="fa-fw fab fa-safari"></i><span> 导航</span></a></div></div><span class="close" id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></span></span></nav><div id="post-info"><h1 class="post-title">Android 10 Camera源码分析1：MIPI CSI2总结基于DPHY2.1(转载)</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-12-31T17:01:00.000Z" title="发表于 2022-01-01 01:01:00">2022-01-01</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2024-04-14T13:01:32.928Z" title="更新于 2024-04-14 21:01:32">2024-04-14</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Camera/">Camera</a></span></div><div class="meta-secondline"> <span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>注：文章都是通过阅读各位前辈总结的资料 Android 10.0 &amp;&amp; Linux（Kernel 4.19）Rockchip平台源码、加上自己的思考分析总结出来的，其中难免有理解不对的地方，欢迎大家批评指正。文章为个人学习、研究、欣赏之用，图文内容整理自互联网，如有侵权，请联系删除（◕‿◕），转载请注明出处（©Rockchip ©Android @Linux 版权所有），谢谢。<br>（==<strong>文章基于 Kernel-4.19</strong>==）&amp;&amp;（==<strong>文章基于 Android 10.0</strong>==）<br> <a target="_blank" rel="noopener" href="https://github.com/zhoujinjianzz">【zhoujinjian.com博客原图链接】</a><br> <a target="_blank" rel="noopener" href="https://www.khadas.cn/edge-v">【开发板 Khadas Edge V】</a><br><a target="_blank" rel="noopener" href="https://github.com/khadas/linux/tree/khadas-edge-Qt">【开发板 Khadas Edge V Android 10.0 &amp;&amp; Linux（Kernel 4.19）源码链接】</a></p>
+<p>正是由于前人的分析和总结，帮助我节约了大量的时间和精力，特别感谢！！！</p>
+<p><a target="_blank" rel="noopener" href="https://www.ifreehub.com/archives/45/"><strong>[Gustav杂物间]:MIPI CSI-2总结: 基于DPHY2.1</strong></a></p>
+<hr>
+<h2 id="源码（部分）-："><a href="#源码（部分）-：" class="headerlink" title="==源码（部分）==："></a>==源码（部分）==：</h2><p>CSI（Camera Serial Interface）定义了摄像头外设与主机控制器之间的接口，旨在确定摄像头与主机控制器在移动应用中的标准。</p>
+<hr>
+<h2 id="关键词描述"><a href="#关键词描述" class="headerlink" title="关键词描述"></a><strong>关键词描述</strong></h2><table>
+<thead>
+<tr>
+<th>缩写</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CCI</td>
+<td>Camera Control Interface（物理层组件，通常使用I2C或I3C进行通信）</td>
+</tr>
+<tr>
+<td>CIL</td>
+<td>Control and Interface Logic</td>
+</tr>
+<tr>
+<td>DT</td>
+<td>Data Type（数据格式，YUV422、RGB888等）</td>
+</tr>
+<tr>
+<td>SoT</td>
+<td>Start of Transmission（传输启动信号）</td>
+</tr>
+<tr>
+<td>EoT</td>
+<td>End of Transmission（传输停止信号）</td>
+</tr>
+<tr>
+<td>FS</td>
+<td>Frame Start（一帧画面开始标志）</td>
+</tr>
+<tr>
+<td>FE</td>
+<td>Frame End（一帧画面结束标志）</td>
+</tr>
+<tr>
+<td>LS</td>
+<td>Line Start（一行像素开始标志）</td>
+</tr>
+<tr>
+<td>LE</td>
+<td>Line End（一行像素结束标志）</td>
+</tr>
+<tr>
+<td>PH</td>
+<td>Packet Header（包头）</td>
+</tr>
+<tr>
+<td>PF</td>
+<td>Packet Footer（包尾）</td>
+</tr>
+<tr>
+<td>HS</td>
+<td>High SPeed（DPHY的传输模式之一）</td>
+</tr>
+<tr>
+<td>LP</td>
+<td>Low Power（DPHY的传输模式之一）</td>
+</tr>
+<tr>
+<td>LP-RX</td>
+<td>Low-Power Receiver（DPHY LP接收器）</td>
+</tr>
+<tr>
+<td>LP-TX</td>
+<td>Low-Power Transmitter（DPHY LP发送器）</td>
+</tr>
+<tr>
+<td>HS-RX</td>
+<td>High-Speed Receiver（DPHY HS接收器）</td>
+</tr>
+<tr>
+<td>HS-TX</td>
+<td>High-Speed Transmitter（DPHY HS发送器）</td>
+</tr>
+<tr>
+<td>Lane</td>
+<td>单向、点对点的信号传输通道，对于DPHY由2线差分接口构成</td>
+</tr>
+<tr>
+<td>Virtual Channel</td>
+<td>用于标识多路独立数据流，DPHY最高支持16个虚拟通道</td>
+</tr>
+<tr>
+<td>UI</td>
+<td>单位间隔，等于Clock Lane上任意HS状态（HS0或HS1）的持续时间</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a><strong>概述</strong></h2><p>CSI-2定义了摄像头应用中发送方（camera）与接收方（soc）之间的数据与控制传输标准，其物理层支持DPHY与CPHY两种，这里以DPHY为例。</p>
+<hr>
+<h2 id="CSI-2层定义"><a href="#CSI-2层定义" class="headerlink" title="CSI-2层定义"></a><strong>CSI-2层定义</strong></h2><p>与网络标准的多层协议相似，CSI-2标准也对camera数据处理的过程进行了分层，简单来说分为应用层、协议层与物理层。协议层又进行了细分：像素字节转换层、低级协议层、Lane管理层。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/csi2_layer.png"></p>
+<ul>
+<li><p>应用层（Application Layer）<br>该层主要用于不同场景对数据的处理过程，对于发送方，多为camera生成数据，对于接收方，多为SOC对数据进行处理。</p>
+</li>
+<li><p>协议层（Protocol Layer）<br>CSI-2协议可以使用SOC上的一个物理接口实现多条数据流的传输。协议层规定了如何对多条数据流进行标记和交织，从而使每条数据流能够正确地重建。</p>
+<ul>
+<li>像素字节转换层（Pixel/Byte Packing/Unpacking Layer）:CSI-2能够支持多种多样的像素格式，对于发送方，在数据发送之前，需要根据像素格式，将像素数据转换为对应的字节流；对于接收方，在将数据提供给应用层之前，需要将字节流数据转换为像素数据。</li>
+<li>低级协议层（Low Level Protocol）：LLP指的是SoT与EoT之间的数据包字节流协议，LLP的最小单元为字节。</li>
+<li>Lane管理器（Lane Management）：为了适应不同场景下对带宽的要求，CSI-2规定了Lane的数量是可拓展的。因此，在面临多Lane同时传输时，发送方需要对字节流进行公平分流（distributor），接收方则需要对多Lane数据进行合并（merger）。</li>
+</ul>
+</li>
+<li><p>物理层（PHY Layer）<br>PHY层指定了传输媒介，在电气层面从串行bit流中捕捉“0”与“1”，同时生成SoT与EoT等信号。</p>
+</li>
+</ul>
+<hr>
+<h2 id="物理层-DPHY"><a href="#物理层-DPHY" class="headerlink" title="物理层 DPHY"></a><strong>物理层 DPHY</strong></h2><p>DPHY在物理上采用2线差分接口，由1对的差分clock lane与1对或多对的差分data lane组成。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/dphy.png"></p>
+<p>上图表明使用DPHY作为物理层时，Camera与SOC之间的硬件关系。SOC的CCI组件通过I2C完成对Camera的配置，使其输出mipi信号，其中一对Clock+/-则由Clock Lane标示，一对DataNBA+/-则由Data Lane标示。</p>
+<p>DPHY工作于两种工作模式：</p>
+<ul>
+<li>HS（High Speed Mode），这种模式用于传输高速的数据信号，如视频流；高速模式下，每对Lane都是工作在低电压摆幅的差分状态下，数据速率为80Mbps到1500Mbps。</li>
+<li>LP（Low Power Mode），这种模式则可以用来传输控制信号；低速模式下，每对lane的2根导线都转变为单端状态，数据速率为10Mbps。</li>
+</ul>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/Lane_Module.png"></p>
+<p>上图为单个Lane模块的内部组成，包含了CIL（Lane控制器与借口逻辑器），LP驱动器，HS驱动器，LP冲突检测。CIL负责控制各个驱动器的工作状态，使得Dp、Dn的工作状态可以在HS与LP之间进行切换。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/Line_Level.png"></p>
+<p>处于HS模式下，差分信号电平摆幅约为200mV；处于LP模式下，单端信号电平摆幅约为1.2V。<br>在LP模式下，根据各个Line的电平可以确定当前Lane的State。</p>
+<h3 id="Data-Lane"><a href="#Data-Lane" class="headerlink" title="Data Lane"></a><strong>Data Lane</strong></h3><p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/Lane_State.png"></p>
+<p>Data Lane差分线电平的高低表明了当前处于何种状态，发送方通过驱动差分线一系列的状态变化，进入不同的工作模式。</p>
+<ul>
+<li>Burst Mode：High-Speed下的唯一模式，高速数据传输模式，此时各个Lane的Line工作在差分模式</li>
+<li>Control Mode：Low Power下的一种模式，可以通过变化不同的state进入其他模式。</li>
+<li>Escape Mode：Low Power下的特殊模式，在这种模式下可以使用一些特别的功能，详见下文。</li>
+</ul>
+<p>协议中规定了进入不同模式时的state变化状态：</p>
+<ul>
+<li><p>HS模式：</p>
+<ul>
+<li>进入HS模式：LP11-&gt;LP01-&gt;LP00</li>
+</ul>
+</li>
+</ul>
+<p>通常进入HS模式也就伴随着高速数据的传输，因此SoT（启动传输）信号也就产生（由于手头没有差分探针，示波器抓到的波形只能看出大致形状）。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/SoT.png"></p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/SoT_Scop.png"></p>
+<p>上图为完整的SoT时序，可以看出SoT由“进入HS模式（A）”和“同步序列（B）”组成。</p>
+<p>SoT流程如下：</p>
+<table>
+<thead>
+<tr>
+<th>发送方</th>
+<th>接收方</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>处于stop状态</td>
+<td>监测stop状态</td>
+</tr>
+<tr>
+<td>进入HS-Rqst状态（LP01）并保持TLPX时间</td>
+<td>监测到LP11至LP01的状态变化</td>
+</tr>
+<tr>
+<td>进入Bridge状态（LP00）并保持THS-PREPARE时间</td>
+<td>监测到LP01至LP00的状态变化</td>
+</tr>
+<tr>
+<td>打开HS驱动器，同时关闭LP驱动器</td>
+<td>_</td>
+</tr>
+<tr>
+<td>进入HS0状态并保持THS-ZERO时间</td>
+<td>使能HS的接收，并等待THS_SETTLE时间，进入稳定期</td>
+</tr>
+<tr>
+<td>_</td>
+<td>寻找Sync_Sequence</td>
+</tr>
+<tr>
+<td>发出Sync_Sequenc’00011101’</td>
+<td>_</td>
+</tr>
+<tr>
+<td>_</td>
+<td>接收到Sync_Sequence</td>
+</tr>
+<tr>
+<td>发送负载数据</td>
+<td></td>
+</tr>
+<tr>
+<td>_</td>
+<td>接收负载数据</td>
+</tr>
+</tbody></table>
+<ul>
+<li>退出HS模式：LP11</li>
+</ul>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/EoT.png"></p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/EoT_Scop.png"></p>
+<p>EoT流程如下：</p>
+<table>
+<thead>
+<tr>
+<th>发送方</th>
+<th>接收方</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>完成负载数据发送</td>
+<td>接收负载数据</td>
+</tr>
+<tr>
+<td>发送完最后一个bit后立刻翻转差分线状态，并保持THS-TRAIL时间</td>
+<td>_</td>
+</tr>
+<tr>
+<td>关闭HS-TX，使能LPTX，并进入LP11状态</td>
+<td>_</td>
+</tr>
+</tbody></table>
+<ul>
+<li>进入Escape模式：LP11-&gt;LP10-&gt;LP00-&gt;LP01-&gt;LP00<br>进入Escape模式后，则可以通过发送8bit命令执行相应的功能，下表列出了可用的Escape命令：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>功能</th>
+<th>命令类型</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Low-Power Data Transmission</td>
+<td>mode</td>
+<td>11100001</td>
+</tr>
+<tr>
+<td>Ultra-Low Power State</td>
+<td>mode</td>
+<td>00011110</td>
+</tr>
+<tr>
+<td>Undefined-1</td>
+<td>mode</td>
+<td>10011111</td>
+</tr>
+<tr>
+<td>Undefined-2</td>
+<td>mode</td>
+<td>11011110</td>
+</tr>
+<tr>
+<td>Reset-Trigger</td>
+<td>Trigger</td>
+<td>01100010</td>
+</tr>
+<tr>
+<td>Unknown-3</td>
+<td>Trigger</td>
+<td>01011101</td>
+</tr>
+<tr>
+<td>Unknown-4</td>
+<td>Trigger</td>
+<td>00100001</td>
+</tr>
+<tr>
+<td>Unknown-5</td>
+<td>Trigger</td>
+<td>10100000</td>
+</tr>
+</tbody></table>
+<ol>
+<li><p><strong>Low-Power Data Transmission</strong></p>
+<p>LPDT功能下，数据能够在LP模式下进行低速传输，此时Clock的时钟需要小于20MHz。<br><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/LPDT.png"><br>上图描述了LPDT下传输2Byte数据的时序。</p>
+</li>
+</ol>
+<ol>
+<li><p><strong>Reset-Trigger</strong></p>
+<p>Reset-Trigger是发送方与接收方相互对应的通信形式，如果输入命令模式与Reset-Trigger命令相匹配，则在接收端通过逻辑PPI向协议标记一个</p>
+</li>
+<li><p><strong>Ultra-Low-Power</strong></p>
+<p>发送方发送ULPS码后，接收方则可以根据这个信号进行自己的LowPower处理。在<br>ULPS期间，Line始终处于LP00状态。若出现持续T<sub>WAKEUP</sub>的Mark-1状态后紧接着Stop状态则退出ULPS。</p>
+</li>
+</ol>
+<h3 id="Clock-Lane"><a href="#Clock-Lane" class="headerlink" title="Clock Lane"></a><strong>Clock Lane</strong></h3><p>与Data Lane一样，Clock Lane也有两种模式，高速传输模式与低功耗模式。<br><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/Clock_Lane.png"></p>
+<p>很明显，Clock Lane进入与退出高速模式与Data Lane基本一致。<br>下面两个表格描述了进入LowPower模式与HS模式的过程(结合上面的时序图与Lane模块的内部组成图一起看)</p>
+<p>进入LP模式：</p>
+<table>
+<thead>
+<tr>
+<th>发送方</th>
+<th>接收方</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>驱动HS Clock信号（HS-0与HS-1交替切换的这种状态）</td>
+<td>接收HS Clock信号</td>
+</tr>
+<tr>
+<td>最后一个Data Lane进入LP模式</td>
+<td>_</td>
+</tr>
+<tr>
+<td>继续驱动HS Clock信号保持TCLK-POST时间并以HS-0结束</td>
+<td>_</td>
+</tr>
+<tr>
+<td>保持HS-0状态约TCLK-TRAIL时长</td>
+<td>在TCLK-MISS检测时钟是否消失，并关闭HS-RX单元</td>
+</tr>
+<tr>
+<td>关闭HS-TX单元，使能LP-TX单元，转变为停止状态LP-11并保持THS-EXIT</td>
+<td>_</td>
+</tr>
+<tr>
+<td>_</td>
+<td>检测到LP-11状态，关闭HS终端，进入停止模式</td>
+</tr>
+</tbody></table>
+<p>进入HS模式</p>
+<table>
+<thead>
+<tr>
+<th>发送方</th>
+<th>接收方</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>驱动至Stop状态（LP-11）</td>
+<td>侦测Stop状态</td>
+</tr>
+<tr>
+<td>驱动至HS-Req（LP-01）并保持TLPX</td>
+<td>侦测导线上是否出现LP-11到LP-01的变化</td>
+</tr>
+<tr>
+<td>驱动至LP-00并保持TCLK-PREPARE</td>
+<td>侦测LP-01到LP-00的变化并在TCLK-TERM-EN后使能HS终端</td>
+</tr>
+<tr>
+<td>使能高速驱动器同时关闭LP驱动器，保持HS-0状态TCLK-ZERO</td>
+<td>使能HS-RX并等待TCLK-SETTLE</td>
+</tr>
+<tr>
+<td>_</td>
+<td>接收HS信号</td>
+</tr>
+<tr>
+<td>在Data Lane启动之前，驱动HS Clock保持TCLK-PRE</td>
+<td>接收HS Clock信号</td>
+</tr>
+</tbody></table>
+<h3 id="时序参数"><a href="#时序参数" class="headerlink" title="时序参数"></a>时序参数</h3><p>接收方的DPHY能否成功捕捉到有效的数据取决于发送与接收两方之间的时序，下表列出了收发双方的所有时序参数，其中接收方的时序应该能够兼容发送方的时序参数。<br><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/timing_param1.png"></p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/timing_param2.png"></p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/notes.png"></p>
+<hr>
+<h2 id="多Lane的分发与合并"><a href="#多Lane的分发与合并" class="headerlink" title="多Lane的分发与合并"></a><strong>多Lane的分发与合并</strong></h2><p>当某些应用场景需要的带宽超过了单Lane所能提供的带宽或者为了降低Clock频率的情况下，则可以通过拓展Data Lane来满足要求。</p>
+<p>下图展示了数据流在单lane与多lane的情况下，发送方内部的Lane Distribution Function（LDF）对来自LLP层的字节数据流的分发过程。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/lane_distribution.png"></p>
+<p>对于接收方，对应的拥有一个Lane Merging Function（LMF），用于将PHY层的多lane的数据合并为LLP层所需的字节流。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/lane_merging.png"></p>
+<p>在多Lane（定为N）传输的情况下，对于一帧数据，其数据长度不是Lane数量（N）的整数倍的情况下，则倒数第二组数据发出后会剩下少于N的字节需要发送，此时LDF会将无数据分配的Lane置为“Invalid Data”直接进入EoT。</p>
+<p>下图展示了分发后的数据在2个Lane上的传输情况（包含两种情况）</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/lane_dis_dphy.png"></p>
+<p>多Lane合并就是多Lane分发的相反过程，这里就不在赘述。</p>
+<h2 id="低级协议（Low-Level-Protocol）"><a href="#低级协议（Low-Level-Protocol）" class="headerlink" title="低级协议（Low Level Protocol）"></a><strong>低级协议（Low Level Protocol）</strong></h2><p>LLP是基于字节，以包为单元的协议，支持长短两种包格式。</p>
+<ul>
+<li>传输任意数据（负载独立）</li>
+<li>以字节为数据元</li>
+<li>对于DPHY，支持16路虚拟通道；对于CPHY，支持32路虚拟通道</li>
+<li>支持独立的帧起始，帧结束，行起始，行结束等数据包</li>
+<li>包含对数据类型，像素深度与格式的描述</li>
+<li>16-bit Checksum错误侦测</li>
+<li>6-bit 错误发现与纠正</li>
+</ul>
+<p>LLP支持两种包结构，分别为长包与短包，包格式与长短取决于具体的物理层。无论何种类型的包，均由SoT信号开始，EoT信号结束。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/llp_overview.png"></p>
+<p>以DPHY为例来分析具体的协议格式，DPHY长包主要由包头、包负载、包尾三部分组成，具体如下图：<br><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/llp.png"></p>
+<p>短包协议格式如下图：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/llp_short.png"></p>
+<p>其中Data Type取值为0x10-0x37（见下图），虚拟通道由4bit构成，高2bit来自VCX，低2bit来自Data ID的bit6、7。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/data_type_class.png"></p>
+<p>上图可以发现，短包有两类Data Type</p>
+<ul>
+<li>同步短包：用于对帧或行起停进行标识，起到同步作用。</li>
+</ul>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/sync_short.png"></p>
+<ul>
+<li>通用短包：通用短包数据类型的目的是提供一种在数据流中打开/关闭快门、触发闪光灯等的机制。16bit短包数据域用于传输约定好的信息，实现对一些自定义功能的控制。</li>
+</ul>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/generic_short.png"></p>
+<h3 id="虚拟通道（virtual-Channel-ID）"><a href="#虚拟通道（virtual-Channel-ID）" class="headerlink" title="虚拟通道（virtual Channel ID）"></a><strong>虚拟通道（virtual Channel ID）</strong></h3><p>虚拟通道的作用是在交织传输的不同数据流中，区分出各个数据流所属的逻辑上的通道，以max9286为例，来自4路同轴线的相机数据可以设置为不同的虚拟通道，这样，在SOC侧CSI模块处理时，可以根据不同的虚拟通道ID将每个摄像头的数据转发至各自的内存区域，这样就能从4个地址获得单独的4个图像。若不使用虚拟通道，则4路数据就无法区分了（当然max9286内部能够将4个图像拼接为一个大图输出）。<br>虚拟通道由包头中的VC与VCX构成，对于DPHY来说，由4bit组成，最高16路虚拟通道，高2bit来自VCX，低2bit来自VC。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/vc.png"></p>
+<h3 id="数据类型（Data-Type）"><a href="#数据类型（Data-Type）" class="headerlink" title="数据类型（Data Type）"></a><strong>数据类型（Data Type）</strong></h3><p>数据类型表明了负载数据的格式和内容，上文提到，根据长短包的不同，数据类型共有8种不同的分类。短包数据类型的详细信息在上文已经介绍了，这里说明下长包的5种数据类型，详见下表：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/data_format.png"></p>
+<h2 id="像素字节转换"><a href="#像素字节转换" class="headerlink" title="像素字节转换"></a><strong>像素字节转换</strong></h2><p>图像数据在LLP传输时需要以字节流的形式进行，应用层来的像素数据需要根据具体的像素格式进行转换，以YUV422 8bit为例：<br>YUV422 8bit是以UYVY的顺序进行传输的，见下图：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/yuv422_8bit.png"></p>
+<p>YUV422 8bit的最小包传输单元如下表，其他长度的包长度必须为最小单元的整数倍：<br><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/yuv422_packet.png"></p>
+<p>为什么最小包单元是2pixels、4bytes、32bit而不是1pixels、2bytes、16bit呢？这是因为YUV422 8bit中两个Y分量共用一个UV分量，因此一Packet至少需要携带2个pixels的信息。</p>
+<p>像素至字节的转换过程如下，从CSI-2标准文档提供的示意图可以看出，相对与原数据其实也没做啥转换，就统一了数据在LLP传输时高底位的发送顺序。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android.10.Camera.01/pixel_byte.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">zhoujinjian</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://zhoujinjian.com/posts/20220101/">https://zhoujinjian.com/posts/20220101/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://zhoujinjian.com" target="_blank">zhoujinjian</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Camera/">Camera</a></div><div class="post_share"><div class="social-share" data-image="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.31.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/posts/20220115/"><img class="prev-cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.32.jpg" onerror="onerror=null;src='/img/404.jpg'"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">Android 10 Camera源码分析2：V4L2简介</div></div></a></div><div class="next-post pull-right"><a href="/posts/20211111/"><img class="next-cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.30.jpg" onerror="onerror=null;src='/img/404.jpg'"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Android 10 Display System源码分析（9）：App（&quot;com.android.testgreen&quot;）界面显示流程源码分析（2）：Window加载显示流程分析（Android 10.0 &amp;&amp; Kernel 4.15）</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/posts/20220515/" title="Android 10 Camera源码分析10：Camera Android架构(基于Q)转载.md"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.40.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-05-15</div><div class="title">Android 10 Camera源码分析10：Camera Android架构(基于Q)转载.md</div></div></a></div><div><a href="/posts/20220115/" title="Android 10 Camera源码分析2：V4L2简介"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.32.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-01-15</div><div class="title">Android 10 Camera源码分析2：V4L2简介</div></div></a></div><div><a href="/posts/20220201/" title="Android 10 Camera源码分析3：videobuf2 申请与map、入队与出队"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.33.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-02-01</div><div class="title">Android 10 Camera源码分析3：videobuf2 申请与map、入队与出队</div></div></a></div><div><a href="/posts/20220215/" title="Android 10 Camera源码分析4：Rockchip ISP1 Driver 分析"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.34.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-02-15</div><div class="title">Android 10 Camera源码分析4：Rockchip ISP1 Driver 分析</div></div></a></div><div><a href="/posts/20220301/" title="Android 10 Camera源码分析5：rkisp_demo分析"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.35.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-03-01</div><div class="title">Android 10 Camera源码分析5：rkisp_demo分析</div></div></a></div><div><a href="/posts/20220315/" title="Android 10 Camera源码分析6：Camera HAL3简介 && Camera Provider分析"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.36.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-03-15</div><div class="title">Android 10 Camera源码分析6：Camera HAL3简介 && Camera Provider分析</div></div></a></div></div></div></div><div class="aside_content" id="aside_content"><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="card-content"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%EF%BC%88%E9%83%A8%E5%88%86%EF%BC%89-%EF%BC%9A"><span class="toc-number">1.</span> <span class="toc-text">&#x3D;&#x3D;源码（部分）&#x3D;&#x3D;：</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E8%AF%8D%E6%8F%8F%E8%BF%B0"><span class="toc-number">2.</span> <span class="toc-text">关键词描述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">3.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#CSI-2%E5%B1%82%E5%AE%9A%E4%B9%89"><span class="toc-number">4.</span> <span class="toc-text">CSI-2层定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%89%A9%E7%90%86%E5%B1%82-DPHY"><span class="toc-number">5.</span> <span class="toc-text">物理层 DPHY</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Data-Lane"><span class="toc-number">5.1.</span> <span class="toc-text">Data Lane</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Clock-Lane"><span class="toc-number">5.2.</span> <span class="toc-text">Clock Lane</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%B6%E5%BA%8F%E5%8F%82%E6%95%B0"><span class="toc-number">5.3.</span> <span class="toc-text">时序参数</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A4%9ALane%E7%9A%84%E5%88%86%E5%8F%91%E4%B8%8E%E5%90%88%E5%B9%B6"><span class="toc-number">6.</span> <span class="toc-text">多Lane的分发与合并</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%8E%E7%BA%A7%E5%8D%8F%E8%AE%AE%EF%BC%88Low-Level-Protocol%EF%BC%89"><span class="toc-number">7.</span> <span class="toc-text">低级协议（Low Level Protocol）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E9%80%9A%E9%81%93%EF%BC%88virtual-Channel-ID%EF%BC%89"><span class="toc-number">7.1.</span> <span class="toc-text">虚拟通道（virtual Channel ID）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%EF%BC%88Data-Type%EF%BC%89"><span class="toc-number">7.2.</span> <span class="toc-text">数据类型（Data Type）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%83%8F%E7%B4%A0%E5%AD%97%E8%8A%82%E8%BD%AC%E6%8D%A2"><span class="toc-number">8.</span> <span class="toc-text">像素字节转换</span></a></li></ol></div></div></div><div class="card-widget card-recent-post"><div class="card-content"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/posts/20240225/" title="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.64.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序"/></a><div class="content"><a class="title" href="/posts/20240225/" title="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序">Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序</a><time datetime="2024-02-24T16:00:00.000Z" title="发表于 2024-02-25 00:00:00">2024-02-25</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240224/" title="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.63.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍"/></a><div class="content"><a class="title" href="/posts/20240224/" title="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍">Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍</a><time datetime="2024-02-23T16:00:00.000Z" title="发表于 2024-02-24 00:00:00">2024-02-24</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240223/" title="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.62.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识"/></a><div class="content"><a class="title" href="/posts/20240223/" title="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识">Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识</a><time datetime="2024-02-22T16:00:00.000Z" title="发表于 2024-02-23 00:00:00">2024-02-23</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240222/" title="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.61.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识"/></a><div class="content"><a class="title" href="/posts/20240222/" title="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识">Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识</a><time datetime="2024-02-21T16:00:00.000Z" title="发表于 2024-02-22 00:00:00">2024-02-22</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240221/" title="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.60.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识"/></a><div class="content"><a class="title" href="/posts/20240221/" title="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识">Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识</a><time datetime="2024-02-20T16:00:00.000Z" title="发表于 2024-02-21 00:00:00">2024-02-21</time></div></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By zhoujinjian</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js"></script><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module" defer></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload/dist/lazyload.iife.min.js"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/js/calendar.js"></script><script src="/js/languages.js"></script><script src="/js/fishes.js"></script><script>(function(){
+  const bp = document.createElement('script');
+  const curProtocol = window.location.protocol.split(':')[0];
+  if (curProtocol === 'https'){
+  bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+  bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+  bp.dataset.pjax = ''
+  const s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(bp, s);
+})()</script></div></body></html>

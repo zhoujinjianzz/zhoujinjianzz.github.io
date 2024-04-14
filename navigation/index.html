@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-siteapp">
+    <link rel="icon" href="icon/192.png" sizes="192x192" />
+    <link rel="apple-touch-icon-precomposed" href="icon/300.png" />
+    <meta name="msapplication-TileImage" content="icon/300.png" />
+    <link rel="shortcut icon" href="icon/32.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-touch-fullscreen" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="full-screen" content="yes">
+    <!--UC强制全屏-->
+    <meta name="browsermode" content="application">
+    <!--UC应用模式-->
+    <meta name="x5-fullscreen" content="true">
+    <!--QQ强制全屏-->
+    <meta name="x5-page-mode" content="app">
+    <!--QQ应用模式-->
+    <title>zhoujinjianzz</title>
+    <link href="style.css" rel="stylesheet">
+    <!--阿里图标-->
+    <script src="https://at.alicdn.com/t/font_2020254_e4ayy4gt326.js"></script>
+    <script src="https://cdnjs.loli.net/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            //判断窗口大小，添加输入框自动完成
+            var wid = $("body").width();
+            if (wid < 640) {
+                $(".wd").attr('autocomplete', 'off');
+            }else{
+                $(".wd").focus();
+            }
+            //按钮
+            $(".sou li").click(function() {
+                var dt = $(this).attr('data-s');
+                wd = $(".wd").val();
+                if (dt == "google") {
+                    if (wd == "" || wd == null) {
+                        window.location.href = "https://www.google.com/?hl=zh";
+                    } else {
+                        $("form").attr('action', 'https://www.google.com/search?hl=zh');
+                        $(".wd").attr("name","q");
+                        $("form").submit();
+                    }
+                } else if (dt == "baidu") {
+                    if (wd == "" || wd == null) {
+                        window.location.href = "https://www.baidu.com/?tn=simple";
+                    } else {
+                        $("form").attr('action', 'https://www.baidu.com/s?ie=utf-8');
+                        $(".wd").attr("name","wd");
+                        $("form").submit();
+                    }
+                } else if (dt == "wechat") {
+                    if (wd == "" || wd == null) {
+                        window.location.href = "https://weixin.sogou.com/?tn=simple";
+                    } else {
+                        $("form").attr('action', 'https://weixin.sogou.com/weixin?query=');
+                        $(".wd").attr("name","query");
+                        $("form").submit();
+                    }
+                } else if (dt == "bing") {
+                    if (wd == "" || wd == null) {
+                        window.location.href = "https://www.bing.com/?tn=simple";
+                    } else {
+                        $("form").attr('action', 'https://www.bing.com/search?hl=zh');
+                        $(".wd").attr("name","q");
+                        $("form").submit();
+                    }
+                }
+
+            });
+            $("#content").click(function(event) {
+                $(".on").removeClass('on');
+                $(".list").addClass('ZHOUJINJIAN');
+                $(".mywth").removeClass('hidden');
+            });
+            $(".mywth").click(function(event) {
+                var wt = $("body").width();
+                if (wt < 750 || wt == 750) {
+                    //window.location.href = "https://tianqi.qq.com/";
+                    window.location.href = "https://apip.weatherdt.com/h5.html?id=pjICbzAo4C";
+                }
+            });
+        });
+
+    </script>
+</head>
+
+<body>
+    <div id="menu"><i></i></div>
+
+    <div id="content">
+        <div class="con">
+            <div class="shlogo"></div>
+            <div class="sou">
+                <form action="https://www.google.com/search?hl=zh" method="get" target="_self">
+                    <input class="wd" type="text" placeholder="请输入搜索内容" name="q" x-webkit-speech lang="zh-CN">
+                    <input type="hidden" name="type" value="2"/>
+                    <button><svg class="icon" style=" width: 25px; height: 21px; opacity: 0.5;" aria-hidden="true"><use xlink:href="#icon-sousuo"></use></svg></button>
+                </form>
+                <ul>
+                    <li data-s="google" target="_blank"><i style="background-image: url(icon/g.svg);"></i>Google</li>
+                    <li data-s="bing" target="_blank"><i style="background-image: url(icon/bing_icon.png);"></i>必应搜索</li>
+                    <li data-s="wechat" target="_blank"><i style="background-image: url(icon/wechat.png);"></i>微信公众号</li>
+                    <li data-s="baidu" target="_blank"><i style="background-image: url(icon/baidu.svg);"></i>百度一下</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="list zhoujinjianzz">
+            <ul>
+                <!--
+                <li class="title"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-zuoce-changyong-gaoliang"></use></svg> （常用） </li>
+                <li><a rel="nofollow" href="https://tophub.today/" target="_blank"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-bangdan"></use></svg>今日热榜</a></li>
+                <li><a rel="nofollow" href="https://www.v2ex.com/?tab=hot" target="_blank"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-v2ex"></use></svg>V2EX</a></li>
+                <li><a rel="nofollow" href="https://www.youtube.com/" target="_blank"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-youtube"></use></svg>Youtube</a></li>
+                <li><a rel="nofollow" href="https://www.twitter.com" target="_blank"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-twitter"></use></svg>Twitter</a></li>
+                <li><a rel="nofollow" href="https://cn.nytimes.com/" target="_blank"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-newyorktimes"></use></svg>纽约时报</a></li>
+                <li><a rel="nofollow" href="https://www.bbc.com/zhongwen/simp" target="_blank"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-zhongwen"></use></svg>BBC中文网</a></li>
+                <li><a rel="nofollow" href="https://github.com/" target="_blank"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github"></use></svg>GitHub</a></li>
+                <li><a rel="nofollow" href="https://pan.baidu.com" target="_blank"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-baiduyun"></use></svg>百度网盘</a></li>
+                -->
+            </ul>
+        </div>
+
+        <div class="foot">© 2015-2022 by . <a href="https://zhoujinjian.com/">zhoujinjianzz</a> . All rights reserved.</div>
+    </div>
+</body>
+
+</html>

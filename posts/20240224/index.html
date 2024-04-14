@@ -1,0 +1,910 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍 | zhoujinjian</title><meta name="keywords" content="Linux"><meta name="author" content="zhoujinjian"><meta name="copyright" content="zhoujinjian"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="注：文章都是通过阅读各位前辈总结的资料 Android 11.0 &amp;&amp; Linux（Kernel 4.19）Rockchip平台源码、加上自己的思考分析总结出来的，其中难免有理解不对的地方，欢迎大家批评指正。文章为个人学习、研究、欣赏之用，图文内容整理自互联网，如有侵权，请联系删除（◕‿◕），转载请注明出处（©Rockchip ©Android @Linux 版权所有），谢谢。 （">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍">
+<meta property="og:url" content="https://zhoujinjian.com/posts/20240224/index.html">
+<meta property="og:site_name" content="zhoujinjian">
+<meta property="og:description" content="注：文章都是通过阅读各位前辈总结的资料 Android 11.0 &amp;&amp; Linux（Kernel 4.19）Rockchip平台源码、加上自己的思考分析总结出来的，其中难免有理解不对的地方，欢迎大家批评指正。文章为个人学习、研究、欣赏之用，图文内容整理自互联网，如有侵权，请联系删除（◕‿◕），转载请注明出处（©Rockchip ©Android @Linux 版权所有），谢谢。 （">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.63.jpg">
+<meta property="article:published_time" content="2024-02-23T16:00:00.000Z">
+<meta property="article:modified_time" content="2024-04-14T13:01:32.940Z">
+<meta property="article:author" content="zhoujinjian">
+<meta property="article:tag" content="Linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.63.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://zhoujinjian.com/posts/20240224/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="preconnect" href="//zz.bdstatic.com"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: {"limitDay":500,"position":"top","messagePrev":"It has been","messageNext":"days since the last update, the content of the article may be outdated."},
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  ClickShowText: undefined,
+  lightbox: 'mediumZoom',
+  Snackbar: {"chs_to_cht":"你已切换为繁体","cht_to_chs":"你已切换为简体","day_to_night":"你已切换为深色模式","night_to_day":"你已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#121212","position":"bottom-left"},
+  justifiedGallery: {
+    js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+    css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+  },
+  isPhotoFigcaption: false,
+  islazyload: true,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2024-04-14 21:01:32'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sviptzk/HexoStaticFile@master/Hexo/css/flink.min.css"><meta name="generator" content="Hexo 5.0.2"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" data-lazy-src="/img/avatar.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">104</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fa fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fa fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fa fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 媒体</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/movies/"><i class="fa-fw fa fa-film"></i><span> 电影</span></a></li><li><a class="site-page" href="/books/"><i class="fa-fw fas fa-book"></i><span> 书单</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/home/"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fa fa-heart"></i><span> 关于</span></a></div><div class="menus_item"><a class="site-page" href="/navigation/"><i class="fa-fw fab fa-safari"></i><span> 导航</span></a></div></div></div></div><div id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.63.jpg)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">zhoujinjian</a></span><span id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fa fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fa fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fa fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 媒体</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/movies/"><i class="fa-fw fa fa-film"></i><span> 电影</span></a></li><li><a class="site-page" href="/books/"><i class="fa-fw fas fa-book"></i><span> 书单</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/home/"><i class="fa-fw fa fa-cloud-sun-rain"></i><span> 主页</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fa fa-heart"></i><span> 关于</span></a></div><div class="menus_item"><a class="site-page" href="/navigation/"><i class="fa-fw fab fa-safari"></i><span> 导航</span></a></div></div><span class="close" id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></span></span></nav><div id="post-info"><h1 class="post-title">Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2024-02-23T16:00:00.000Z" title="发表于 2024-02-24 00:00:00">2024-02-24</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2024-04-14T13:01:32.940Z" title="更新于 2024-04-14 21:01:32">2024-04-14</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Linux/">Linux</a></span></div><div class="meta-secondline"> <span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>注：文章都是通过阅读各位前辈总结的资料 Android 11.0 &amp;&amp; Linux（Kernel 4.19）Rockchip平台源码、加上自己的思考分析总结出来的，其中难免有理解不对的地方，欢迎大家批评指正。文章为个人学习、研究、欣赏之用，图文内容整理自互联网，如有侵权，请联系删除（◕‿◕），转载请注明出处（©Rockchip ©Android @Linux 版权所有），谢谢。</p>
+<p>（==<strong>文章基于 Kernel-4.19</strong>==）&amp;&amp;（==<strong>文章基于 Android 11.0</strong>==）</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/zhoujinjianzz">【zhoujinjian.com博客原图链接】</a> </p>
+<p><a target="_blank" rel="noopener" href="https://shop.allnetchina.cn/collections/frontpage/products/rock-pi-4-model-b-board-only-2-4-5ghz-wlan-bluetooth-5-0">【开发板 RockPi4bPlusV1.6】</a></p>
+<p><a href="">【开发板 RockPi4bPlusV1.6 Android 11.0 &amp;&amp; Linux（Kernel 4.19）源码链接】</a>：（repo init -u <a target="_blank" rel="noopener" href="https://github.com/radxa/manifests.git">https://github.com/radxa/manifests.git</a> -b Android11_Radxa_rk11.1 -m rockchip-r-release.xml）</p>
+<p><a target="_blank" rel="noopener" href="https://wiki.radxa.com/Rockpi4/rockpi-android11">【开发板 RockPi4bPlusV1.6 Android 11.0 &amp;&amp; Linux（Kernel 4.19）编译指南】</a></p>
+<p>正是由于前人（各位大神）的分析和总结，帮助我节约了大量的时间和精力，特别感谢，由于不喜欢图片水印，去除了水印，敬请谅解！！！</p>
+<p>本文转自<a target="_blank" rel="noopener" href="https://www.cnblogs.com/zyly/p/17778171.html">Rockchip RK3399 - DRM HDMI介绍 </a>，如有侵权，请联系删除。</p>
+<hr>
+<p>开发板 ：<code>ROCK Pi 4B+</code>开发板<br><code>eMMC</code> ：<code>32GB</code><br><code>LPDDR4</code> ：<code>4GB</code><br>显示屏 ：<code>7</code>英寸<code>HDMI</code>接口显示屏<br><code>u-boot</code> ：<code>2017.09</code><br><code>linux</code> ：<code>4.19</code>  </p>
+<hr>
+<p>在<a target="_blank" rel="noopener" href="https://www.cnblogs.com/zyly/p/17686403.html">《<code>Rockchip RK3399 - DRM</code>驱动程序》</a>我们已经介绍过了，<code>RK3399</code>有两个<code>VOP</code>，均可以支持<code>HDMI</code>、<code>eDP</code>、<code>DP</code>、<code>MIPI DSI0</code>、<code>MIPI DSI1</code>显示接口，本节我们选择<code>HDMI</code>作为分析的对象。</p>
+<h3 id="一、HDMI介绍"><a href="#一、HDMI介绍" class="headerlink" title="一、HDMI介绍"></a>一、<code>HDMI</code>介绍</h3><h4 id="1-1-概述"><a href="#1-1-概述" class="headerlink" title="1.1 概述"></a>1.1 概述</h4><p><code>HDMI</code>全称（<code>High Definition Multimedia Interface</code>）高清多媒体接口，支持在单线缆上传输全数字高清视频和多声道音频。</p>
+<p><code>HDMI</code>基于<code>TMDS</code>协议传输，主要用于<code>DVD</code>, 机顶盒等音视频<code>source</code>到<code>TV</code>，显示器等<code>sink</code>设备的传输。</p>
+<p><code>HDMI</code>向下兼容<code>DVI</code>，但是<code>DVI</code>（数字视频接口）只能用来传输视频，而不能同时传输音频，这是两者最主要的差别。</p>
+<h5 id="1-1-1-版本变更"><a href="#1-1-1-版本变更" class="headerlink" title="1.1.1 版本变更"></a>1.1.1 版本变更</h5><p><code>HDMI 1.0</code>版本于<code>2002</code>年发布，最高数据传输速度为<code>5Gbps</code>；</p>
+<p><code>HDMI 1.1</code>版本版本<code>2004</code>年5月分布，新增对<code>DVD</code>音频的支持；</p>
+<p><code>HDMI 1.2</code>版本于<code>2005</code>年<code>8</code>月推出，很大程度上解决了<code>HDMI 1.1</code>支持的分辨率较低、同电脑设备兼容性较差等问题。<code>1.2</code>版像素时钟运行频率达到<code>165MHz</code>，数据量达到<code>4.95 Gbps</code>，因此可以实现<code>1080P</code>。可以认为<code>1.2</code>版解决的是电视的<code>1080P</code>和电脑的点对点问题。</p>
+<p><code>2006</code>年<code>6</code>月<code>HDMI 1.3</code>更新，带来最大的变化是将单链接带宽频率提升到<code>340MHz</code>，也就能让这些液晶电视获得<code>10.2Gbps</code>的数据传输量，<code>1.3</code>版的线是有4对传输通道组成，其中1对通道是时钟通道，另外3对是<code>TMDS</code>通道（最小化传输差分信号），他们的传输速度分别为<code>3.4GBPS</code>。那么3对就是<code>3*3.4=10.2GPBS</code>更是能将<code>HDMI 1.1、1.2</code>版本所支持的<code>24</code>位色深大幅扩充至<code>30</code>位、<code>36</code>位及<code>48</code>位（<code>RGB</code>或<code>YCbCr</code>）;</p>
+<p><code>HDMI 1.4</code>版本已经可以支持<code>4K</code>了，但是受制于带宽<code>10.2Gbps</code>，最高只能达到<code>3840×2160</code>分辨率和<code>30FPS</code>帧率；</p>
+<p><code>HDMI 2.0</code>的带宽扩充到了<code>18Gbps</code>，支持即插即用和热插拔，支持<code>3840×2160</code>分辨率和<code>50FPS</code>、<code>60FPS</code>帧率。同时在音频方面支持最多<code>32</code>个声道，以及最高<code>1536kHz</code>采样率。<code>HDMI 2.0</code>并没有定义新的数据线和接头、接口，因此能保持对<code>HDMI 1.x</code>的完美向下兼容，现有的二类数据线可直接使用。<code>HDMI 2.0</code>并不会取代<code>HDMI 1.x</code>，而是基于后者的增强，任何设备要想支持<code>HDMI 2.0</code>必须首先保证对<code>HDMI 1.x</code>的基础性支持。</p>
+<p><code>HDMI 2.0a</code>的变化并不大，它的主要更新只有一个地方，那就是加入了对<code>HDR</code>格式传输的支持，能够显著增强图像质量。</p>
+<p><code>HDMI 2.0b</code>兼容所有<code>HDMI</code>之前的规格版本，与<code>HDMI 2.0a</code>并没有太大区别。</p>
+<p>而<code>2017</code>年发布的<code>HDMI 2.1</code>标准的理论带宽可达<code>48Gbps</code>。</p>
+<h5 id="1-1-2-术语"><a href="#1-1-2-术语" class="headerlink" title="1.1.2 术语"></a>1.1.2 术语</h5><p>在介绍<code>HDMI</code>时，我们会提到大量的专业术语：</p>
+<ul>
+<li><code>HDCP</code>：<code>High-bandwidth Digital Content Protection</code>版权保护相关的，通过<code>IIC</code>获取；</li>
+<li><code>EDID</code>：<code>Extended Display Identification Data</code>扩展显示标识数据，包含有关显示器及其性能的参数，包括供应商信息、最大图像大小、颜色设置、厂商预设置、频率范围的限制以及显示器名和序列号的字符串等；</li>
+<li><code>DDC</code>：<code>Display Data Channel</code>显示数据通道，其实就是<code>IIC</code>通道，用来获取<code>EDID</code>、<code>HDCP</code>密钥等内容；</li>
+<li><code>HDP</code>：<code>Hot Plug Detect</code>热插拔检测；</li>
+<li><code>CEC</code>：<code>Consumer Electronics Control</code>用户电气控制，<code>CEC</code>可以控制从设备的一些状态，即遥控器功能；</li>
+<li><code>TMDS</code>：<code>Transition Minimized Differential Signaling</code>最小化传输差分信号，一种差分传输技术；</li>
+<li><code>HEAC</code>：<code>HDMI Ethernet and Audio Return Channel</code>以太网和音频返回，<code>HEAC</code>需要额外的<code>phy</code>才能支持；</li>
+<li><code>Source</code>：<code>A device with an HDMI output</code>；</li>
+<li><code>Sink</code>：<code>A device with an HDMI input</code>；</li>
+<li><code>CTS</code>：<code>Compliance Test Specification</code>。</li>
+</ul>
+<h4 id="1-2-HDMI框图"><a href="#1-2-HDMI框图" class="headerlink" title="1.2 HDMI框图"></a>1.2 <code>HDMI</code>框图</h4><p><code>HDMI</code>系统架构由<code>source</code>端和<code>sink</code>端组成：<code>source</code>是指发送<code>HDMI</code>信号的一侧，<code>sink</code>是指接收<code>HDMI</code>信号的一侧。</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/hdmi-arc.png" alt="hdmi-arc"></p>
+<p>以上是<code>HDMI</code>的结构图，从中我们大致可以看出<code>HDMI</code>信号的组成部分：</p>
+<ul>
+<li><p>四路差分信号，包括三路<code>TMDS Data</code>信号和一路<code>TMDS Clock</code>信号。<code>TMDS</code>信号不仅仅用于传输<code>video</code>信号，还传输<code>audio</code>和辅助信息；</p>
+</li>
+<li><p>一个<code>DDC</code>通道用于在<code>source</code>端和<code>sink</code>端交换状态， 用于告知<code>source</code>端，<code>sink</code>端具体可以接收什么样的数据；</p>
+</li>
+<li><p><code>HDP</code>用于热插拔检测， 连接好过后<code>sink</code>端会发送一个拉高的信号，<code>source</code>端在接收到信号过后会向<code>sink</code>端开始发送数据；</p>
+</li>
+<li><p><code>CEC</code>是用户电气控制，一般用作遥控；<code>CEC</code>是<code>HDMI</code>可选协议；</p>
+</li>
+<li><p><code>HEAC</code>以太网和音频返回；<code>HEAC</code>是<code>HDMI</code>可选协议；</p>
+</li>
+</ul>
+<p>因此，我们可以推断出：</p>
+<ul>
+<li>要想传输音视频，只需要<code>TMDS</code>信号即可；</li>
+<li>要想使用遥控器，需要<code>CEC</code>；</li>
+<li>要想做到分辨率自适应屏幕，需要<code>DDC</code>；</li>
+<li>要支持热插拔，需要实现<code>HPD</code>；</li>
+</ul>
+<h5 id="1-2-1-物理结构"><a href="#1-2-1-物理结构" class="headerlink" title="1.2.1 物理结构"></a>1.2.1 物理结构</h5><p><code>HDMI</code>有<code>A</code>、<code>B</code>、<code>C</code>、<code>D</code>、<code>E</code>五种引脚类型，目前常用的是<code>Type A</code>：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/hdmi-type-a.png" alt="hdmi-type-a"></p>
+<p>其中：</p>
+<ul>
+<li><code>A</code>：<code>HDMI Type A</code>接口共有<code>19pin</code>，宽度为<code>13.9</code>毫米，厚度为<code>4.45</code>毫米；</li>
+<li><code>B</code>：<code>HDMI Type B</code>接口采用<code>29pin</code>，宽度<code>21</code>毫米；</li>
+<li><code>C</code>：<code>HDMI Type C</code>常称为<code>Mini HDMI</code>，它主要是为小型设备设计的；</li>
+<li><code>D</code>：<code>HDMI Type D</code>是最新的接口类型，尺寸进一步缩小；</li>
+<li><code>E</code>：主要用于车载娱乐系统的音视频传输。由于车内环境的不稳定性，<code>HDMI Type E</code>在设计上具备抗震性、防潮、耐高强度、温差承受范围大等特性；</li>
+</ul>
+<h5 id="1-2-2-引脚分布"><a href="#1-2-2-引脚分布" class="headerlink" title="1.2.2 引脚分布"></a>1.2.2 引脚分布</h5><p>其中<code>HDMI Type A</code>接口引脚分布如下：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/hdmi-type-a-pin.png" alt="hdmi-type-a-pin"></p>
+<p>其中：</p>
+<ul>
+<li>1-9：是<code>TMDS data</code>传输用到的引脚，共有三组；</li>
+<li><code>10-12</code>：是<code>TMDS clock</code>传输用到的引脚，共有一组；</li>
+<li>13：<code>CEC</code>引脚；</li>
+<li>14：保留；</li>
+<li>15,16：<code>DDC</code>的引脚，<code>DDC</code>是基于<code>I2C</code>协议传输，故引脚为<code>SCL</code>和<code>SDA</code>；</li>
+<li>17：<code>DDC/CEC</code>地；</li>
+<li>18：<code>5V</code>电源；</li>
+<li>19：<code>HPD</code>引脚，用于热插拔检测；</li>
+</ul>
+<h4 id="1-3-TMDS协议"><a href="#1-3-TMDS协议" class="headerlink" title="1.3 TMDS协议"></a>1.3 <code>TMDS</code>协议</h4><p><code>TMDS</code>（<code>Transition TYPE_Cmized Differential Signaling</code>)最小化传输差分信号。是美国<code>Silicon Image</code>公司开发的一项高速数据传输技术。</p>
+<p><code>TMDS</code>差分传输技术使用两个引脚来传输一路信号，利用这两个引脚间的电压差的正负极性和大小来决定传输数据的数值（0 或 1）。</p>
+<p><code>TMDS</code>传输系统分为两个部分：发送端<code>source</code>和接收端<code>sink</code>。<code>TMDS</code> 链路包括3个传输数据的通道和1个传输时钟信号的通道；</p>
+<ul>
+<li>发送端对这些数据进行编码和并/串转换，再将数据分别分配到独立的传输通道发送出去；</li>
+<li>接收端接收来自发送端的串行信号，对其进行解码和串/并转换，然后发送到显示器的控制端；</li>
+</ul>
+<h5 id="1-3-1-TMDS链路"><a href="#1-3-1-TMDS链路" class="headerlink" title="1.3.1 TMDS链路"></a>1.3.1 <code>TMDS</code>链路</h5><p><code>TMDS</code>链路如下图所示：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/tmds.png" alt="tmds"></p>
+<p>首先我们从图上一眼看过去就可以分为两半边，左边是源，右边是接收，可以分别看作发送与接收端。</p>
+<p>从发送端左边看，分别有蓝、绿、红三个数据通道，加一个时钟通道(像素时钟);</p>
+<p>(1) 时钟通道：主要就是为了将我们传输数据与接收数据都匹配在同一时钟下，使整个系统同步在时钟网络，不容易出错；</p>
+<p>(2) 数据通道：分别有蓝、绿、红三个数据通道；</p>
+<ul>
+<li><p>每个通道都有一个<code>8</code>位的像素位传输颜色数据信息；</p>
+</li>
+<li><p>每个通道都有一个两比特的数据位宽；</p>
+<ul>
+<li><p>在蓝色通道中用于传输<code>HSYNC</code>、<code>VSYNC</code>；</p>
+</li>
+<li><p>在绿色通道中用于传输<code>CTL0、CTL1</code>；</p>
+</li>
+<li><p>在红色通道中用于传输<code>CTL2</code>、<code>CTL3</code>；</p>
+</li>
+</ul>
+</li>
+<li><p>每个通道都有一个4比特的数据位宽用于传输我们的音频信号；</p>
+</li>
+</ul>
+<p>(3) 编码阶段：<code>Encoder</code>是编码，将<code>8bit video</code>的并行数据变成了<code>10bit</code>的串行数据，通过串行传到我们的接收端，这要求我们的串行数据速率是实际像素时钟速率的10倍。在接收端与发送端相反，我们需要将串行数据转换为并行数据并进行解码恢复信号。</p>
+<p>此外<code>TMDS</code>不仅仅是对<code>video</code>进行编码，还包括<code>audio</code>和控制信号。</p>
+<h5 id="1-3-2-TMDS传输周期"><a href="#1-3-2-TMDS传输周期" class="headerlink" title="1.3.2 TMDS传输周期"></a>1.3.2 <code>TMDS</code>传输周期</h5><p><code>TMDS</code>链路将数据传输分为了3个阶段：</p>
+<ul>
+<li><code>Video Data Period</code>：顾名思义，这个阶段用于传输实际有效的视频图像数据，<code>sourc</code>端给<code>sink</code>端发送图像数据，<code>sink</code>端显示；</li>
+<li><code>Data Island Period</code>：这个阶段用于传输音频或者辅助数据等；</li>
+<li><code>Control Period</code>：当没有视频图像数据和音频数据，或者辅助数据的时候，都处于这个阶段；</li>
+</ul>
+<p><code>TMDS</code>传输四种类型数据：</p>
+<ul>
+<li><code>Control</code>：控制信号，主要用于控制接下来传输的是<code>Data Island</code>还是<code>Video Data</code>；通过<code>Channel1</code>和<code>2</code>的<code>D[1:0]</code>传输，占用<code>4bit</code>；</li>
+<li><code>Data Island</code>：数据包，各种类型的包信息，包括音频数据包（通过3个<code>Channel</code>的<code>D[3:0]</code>传输，占用<code>12bit</code>）、辅助数据包等；</li>
+<li><code>Video Data</code>：视频像素数据，<code>HDMI</code>可以传输<code>RGB</code>和<code>YUV</code>两种格式的像素数据；比如<code>R,G,B</code>分别通过<code>Channel2,1,0</code>传输，每个颜色<code>8bit</code>，共<code>24bit</code>；</li>
+<li><code>HSYNC</code>, <code>VSYNC</code>：使用<code>Channel0</code>的<code>D[1:0]</code>传输，占用<code>2bit</code>；</li>
+</ul>
+<p>举了个例子，以<code>720x480p</code>的图像帧为例：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/tmds-type.png" alt="tmds-type"></p>
+<p>上图：</p>
+<ul>
+<li>蓝色部分是<code>Data Island Period</code>；</li>
+<li>深灰色部分是有效的图像数据<code>Video Data Period</code>；</li>
+<li>浅灰色是<code>Control Period</code>；</li>
+</ul>
+<p>可以看到，在有效图像部分，是<code>720x480</code>的宽度；没有传送<code>Data Island Period</code>的时候，都在传送<code>Control Period</code>；</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/tmds-channel.png" alt="tmds-channel"></p>
+<p>左边是<code>Control period</code>：传输有<code>HSYNC</code>、<code>VSYNC</code>与<code>Preamble</code>。</p>
+<ul>
+<li><code>Channel0</code>传输<code>HSYNC</code>, <code>VSYNC</code>;</li>
+<li><code>Channel1[1:0]</code>和<code>Channel2[1:0]</code> 传输<code>Preamble</code>，用来判断接下来输入的是<code>Video Data</code>还是<code>Data Island</code>;</li>
+</ul>
+<p>中间是<code>Data Island period</code>：传输有<code>HSYNC</code>、<code>VSYNC</code>，以及两个<code>Packet Header</code>与<code>Packet</code>，占用三通道共<code>12bit</code>输入;</p>
+<ul>
+<li><code>Channel0[3:2]</code>用于传输<code>Data Island Header</code>（包头）;</li>
+<li><code>Channel1[3:0]</code>与<code>Channel2[3:0]</code>用于传输<code>Data Island Content</code>（包内数据）;</li>
+</ul>
+<p>右边是<code>Video Data period</code> ：视频信号经过编码生成三路<code>TMDS</code>数据通道，共<code>24</code>位视频流数据，输入到<code>HDMI Tx</code>中。24位像素的视频信号通过<code>TMDS</code>通道传输，将每通道8位信号转换为10位，在每个10位像素周期传送一个最小化的信号序列，视频信号将被调制为<code>TMDS</code>信号传送出去。</p>
+<p>(1) <code>Control Period（preamble）</code></p>
+<p>在<code>Data Island</code>或者<code>Video Data</code>传输周期之前，每一个<code>TMDS</code>通道包含<code>2bit</code>的控制数据，一共6位控制数据。</p>
+<table>
+<thead>
+<tr>
+<th>TMDS Channel</th>
+<th>D0</th>
+<th>D1</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>HSYNC</td>
+<td>VSYNC</td>
+</tr>
+<tr>
+<td>1</td>
+<td>CTL0</td>
+<td>CTL1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>CTL2</td>
+<td>CTL3</td>
+</tr>
+</tbody></table>
+<p>每个<code>TMDS</code>通道使用了<code>D[1:0]</code>共<code>2bit</code>，采用<code>2bit</code>到<code>10bit</code>的编码方式。在每个<code>Control Period</code>的最后阶段，<code>CTL0</code>、<code>CTL1</code>、<code>CTL2</code>、<code>CTL3</code>组成的文件头说明下一个周期是<code>Data Island</code>还是<code>Video Data</code>；</p>
+<table>
+<thead>
+<tr>
+<th>CTL0</th>
+<th>CTL1</th>
+<th>CTL2</th>
+<th>CTL3</th>
+<th>数据周期类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>Video Data</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>Data Island</td>
+</tr>
+</tbody></table>
+<p>(2) <code>Video Data Period</code></p>
+<p><code>Video Data Period</code>用来传输视频线的像素，每个 <code>Video Data Period</code>以报文头为前导，在报文头之后,视频数据周期以两个字符开始,做为视频前导保护边界。对于数据周期，没有末尾保护边界。</p>
+<p>(3) <code>Data Island Period</code></p>
+<p><code>Data Island</code>用来携带音频和辅助数据的报文。辅助数据包括<code>Info frame和</code>其他用于音视频信息描述的数据。每个<code>Data Island</code>以2个字符长度的前导保护边界开始，并以2个字符宽度的末尾保护边界结束。</p>
+<table>
+<thead>
+<tr>
+<th>Channel0</th>
+<th>Bit0</th>
+<th>HSYNC</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Channel0</td>
+<td>Bit1</td>
+<td>VSYNC</td>
+</tr>
+<tr>
+<td>Channel0</td>
+<td>Bit2</td>
+<td>packet header</td>
+</tr>
+<tr>
+<td>Channel1</td>
+<td>Bit3:0</td>
+<td>packet</td>
+</tr>
+<tr>
+<td>Channel2</td>
+<td>Bit3:0</td>
+<td>packet</td>
+</tr>
+</tbody></table>
+<h4 id="1-4-电路原理图"><a href="#1-4-电路原理图" class="headerlink" title="1.4 电路原理图"></a>1.4 电路原理图</h4><p>我们使用的<code>NanoPC-T4</code>开发板开发板<code>HDMI</code>接线原理图如下：</p>
+<p> <img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/202311152207668.png" alt="202311152207668"> </p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/202311101932737.png" alt="202311101932737"></p>
+<p>display-desc<img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/202311152207534.png" alt="202311152207534"></p>
+<p>其中：</p>
+<ul>
+<li><p><code>DDC_SCL</code>：连接到<code>RK3399</code>的<code>GPIO2_B0/VOP_CLK/CIF_VSYNC/I2C7_SC</code>引脚；</p>
+</li>
+<li><p><code>DDC_SDA</code>：连接到<code>RK3399</code>的<code>GPIO2_A7/VOP_D7/CIF_D7/I2C7_SDA</code>；</p>
+</li>
+<li><p><code>PORT_CEC</code>：连接到<code>RK3399</code>的<code>GPIO4_C7/HDMI_CECINOUT/EDP_HOTPLUG</code>；</p>
+</li>
+<li><p><code>HDMI_AVDD_0V9_1</code>、<code>HDMI_AVDD_0V9_1</code>电源由<code>VCCA0V9_S3</code>提供，电源<code>VCCA0V9_S3</code>由<code>RT9041B-10GE</code>提供的，这是一款稳压器<code>IC</code>，其输入端为<code>VCC3V3_S5</code>，<code>RT9041B-10GE</code>由<code>VCC1V8_S3</code>使能，<code>VCC1V8_S3</code>作为使能引脚<code>EN</code>的输入端;；因此<code>VCCA0V9_S3</code>可以看做是常供电，更多内容可以参考《<a target="_blank" rel="noopener" href="https://www.cnblogs.com/zyly/p/17701211.html#_label2_0_0"><code>Rockchip RK3399 - USB</code>基础</a>》;</p>
+</li>
+<li><p><code>HDMI_AVDD_1V8</code>由<code>VCC1V8_S3</code>供电，同样可以看做是常供电；</p>
+</li>
+</ul>
+<p><code>RK3399</code>有一个<code>HDMI</code>显示接口（<code>HDMI TX</code>）;</p>
+<ul>
+<li><p>支持<code>HDMI 2.0a</code>;</p>
+</li>
+<li><p>支持<code>4K@60Hz</code>显示;</p>
+</li>
+<li><p>支持<code>HDCP 1.4/2.2</code>。</p>
+</li>
+</ul>
+<h3 id="二、EDID"><a href="#二、EDID" class="headerlink" title="二、EDID"></a>二、<code>EDID</code></h3><h4 id="2-1-概述"><a href="#2-1-概述" class="headerlink" title="2.1 概述"></a>2.1 概述</h4><p><code>EDID</code>：全称是<code>Extended Display Identification Data</code> (外部显示设备标识数据)；<code>VGA</code>、<code>DVI</code>的<code>EDID</code>由主块128字节组成，<code>HDMI</code>的<code>EDID</code>增加扩展块(128字节)，扩展块的内容主要是和音频属性相关的，<code>DVI</code>和<code>VGA</code>没有音频，<code>HDMI</code>自带音频，扩展块数据规范按照<code>CEA-861x</code>标准定义，未来可能增加到<code>512</code>或<code>256</code>的整数倍。</p>
+<p>其中包含有关显示器及其性能的参数，包括供应商信息、最大图像大小、颜色设置、厂商预设置、频率范围的限制以及显示器名和序列号的字符串等等。形象地说，<code>EDID</code>就是显示器的身份证、户口本、技能证书等证件的集合，目的就是告诉别人我是谁，我从哪来，我能干什么。</p>
+<p><code>EDID</code>并非古而有之，在古老的<code>CRT</code>时期是没有<code>EDID</code>这个概念的，那为什么后来会有呢？</p>
+<p>因为随着显示设备的发展，显示器的种类越来越多，模拟的、数字的、普屏的、宽屏的、<code>17</code>寸、<code>19</code>寸、<code>22</code>寸……这让<code>PC</code>傻了眼，分辨率和时序的种类太多了，而每种显示器又不可能支持所有的分辨率，那怎么知道该给显示器一个什么样的分辨率啊？显示出的效果是最佳效果吗？</p>
+<p>不仅如此，随便输出一个分辨率还有损坏显示器硬件的可能，这可太危险了。于是，<code>EDID</code>临危受命，担当起显示器和<code>PC</code>之前的传话筒。</p>
+<ul>
+<li><p>“<code>PC</code>你好，我是<code>A</code>显示器，我能显示<code>N</code>种分辨率，最佳分辨率是<code>XXX</code>”。</p>
+</li>
+<li><p>“显示器你好，收到你的信息，现在就按最佳分辨率给你输出”。</p>
+</li>
+</ul>
+<p>这下大家明白了吧，<code>EDID</code>就是为了能让<code>PC</code>或其他的图像输出设备更好的识别显示器属性而出现的。</p>
+<p>需要注意的是：<code>EDID</code>信息是通过<code>DDC</code>通道传输的，并且每个显示器可能有多个<code>EDID</code>.</p>
+<p>现在的显示器功能很强大，通常都提供多种视频接口，常见的有<code>DVI</code>、<code>VGA</code>、<code>HDMI</code>、<code>Display Port</code>等，由于每种接口的特性和带宽不同，使得不同接口的<code>EDID</code>也不同。使用哪个接口，<code>PC</code>读到的就是哪个接口的<code>EDID</code>。</p>
+<h4 id="2-2-主块详解"><a href="#2-2-主块详解" class="headerlink" title="2.2 主块详解"></a>2.2 主块详解</h4><p>考虑到<code>EDID</code>信息字节太多，我们不可能将所有字节表示的含义介绍一遍。这里我们我们仅仅挑选一些重要的字节进行介绍;</p>
+<h5 id="2-2-1-Header"><a href="#2-2-1-Header" class="headerlink" title="2.2.1 Header"></a>2.2.1 <code>Header</code></h5><p>在<code>EDID</code>的开头八个字节为<code>EDID</code>的开始标志，简称头，固定为：</p>
+<table>
+<thead>
+<tr>
+<th>0H</th>
+<th>01H</th>
+<th>02H</th>
+<th>03H</th>
+<th>04H</th>
+<th>05H</th>
+<th>06H</th>
+<th>07H</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>00</td>
+<td>FF</td>
+<td>FF</td>
+<td>FF</td>
+<td>FF</td>
+<td>FF</td>
+<td>FF</td>
+<td>00</td>
+</tr>
+</tbody></table>
+<h5 id="2-2-2-Vendor-Product-Identification"><a href="#2-2-2-Vendor-Product-Identification" class="headerlink" title="2.2.2 Vendor / Product Identification"></a>2.2.2 <code>Vendor</code> / <code>Product Identification</code></h5><p>这十个字节表示产品ID和制造商信息。详细如下：</p>
+<table>
+<thead>
+<tr>
+<th>08H</th>
+<th>09H</th>
+<th>0AH</th>
+<th>0BH</th>
+<th>0CH</th>
+<th>0DH</th>
+<th>0EH</th>
+<th>0FH</th>
+<th>10H</th>
+<th>11H</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>制造商名称</td>
+<td>产品代码</td>
+<td>产品序列号</td>
+<td>制造周</td>
+<td>制造年份</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p>制造商名称：3个字母组成，基于压缩的ASCII码见下表，例如“00001=A”… …”11010=Z”。这两字节排列如下：</p>
+<table border="1" cellspacing="0"><tbody><tr><td rowspan="2"><p>地址</p></td><td colspan="8"><p>位</p></td></tr><tr><td><p>bit1</p></td><td><p>bit2</p></td><td><p>bit3</p></td><td><p>bit4</p></td><td><p>bit5</p></td><td><p>bit6</p></td><td><p>bit7</p></td><td><p>bit8</p></td></tr><tr><td rowspan="2"><p>08H</p></td><td><p>-</p></td><td><p>（4</p></td><td><p>3</p></td><td><p>2</p></td><td><p>1</p></td><td><p>0）</p></td><td><p>（4</p></td><td><p>3</p></td></tr><tr><td><p></p></td><td colspan="5"><p>字符1</p></td><td colspan="2"><p>字符2</p></td></tr><tr><td rowspan="2"><p>09H</p></td><td><p>2</p></td><td><p>1</p></td><td><p>0）</p></td><td><p>（4</p></td><td><p>3</p></td><td><p>2</p></td><td><p>1</p></td><td><p>0）</p></td></tr><tr><td colspan="3"><p>字符2</p></td><td colspan="5"><p>字符3</p></td></tr></tbody></table>
+
+<table border="1" cellspacing="0"><tbody><tr><td><p>A</p></td><td><p>B</p></td><td><p>C</p></td><td><p>D</p></td><td><p>E</p></td><td><p>F</p></td><td><p>G</p></td><td><p>H</p></td><td><p>I</p></td><td><p>J</p></td><td><p>K</p></td><td><p>L</p></td><td><p>M</p></td></tr><tr><td><p>00001</p></td><td><p>00010</p></td><td><p>00011</p></td><td><p>00100</p></td><td><p>00101</p></td><td><p>00110</p></td><td><p>00111</p></td><td><p>01000</p></td><td><p>01001</p></td><td><p>01010</p></td><td><p>01011</p></td><td><p>01100</p></td><td><p>01101</p></td></tr><tr><td><p>N</p></td><td><p>O</p></td><td><p>P</p></td><td><p>Q</p></td><td><p>R</p></td><td><p>S</p></td><td><p>T</p></td><td><p>U</p></td><td><p>V</p></td><td><p>W</p></td><td><p>X</p></td><td><p>Y</p></td><td><p>Z</p></td></tr><tr><td><p>01110</p></td><td><p>01111</p></td><td><p>10000</p></td><td><p>10001</p></td><td><p>10010</p></td><td><p>10011</p></td><td><p>10100</p></td><td><p>10101</p></td><td><p>10110</p></td><td><p>10111</p></td><td><p>11000</p></td><td><p>11001</p></td><td><p>11010</p></td></tr></tbody></table>
+
+<p>产品代码：固定为4位16进制数，即两个字节，为客户提供，直接填写。</p>
+<p>产品序列号：即产品的流水号（数值型），直接转成16进制或以ASCII格式转换。序列号也可用字符型，在后面DTD部分定义。</p>
+<p>生产周：即在当年中的生产周，范围1~52，注意0为无效值。</p>
+<p>生产年份：规定1990开始计算，即1990年为0，然后递增计算。</p>
+<h5 id="2-2-3-EDID-Structure-Version-Revision"><a href="#2-2-3-EDID-Structure-Version-Revision" class="headerlink" title="2.2.3 EDID Structure Version / Revision"></a>2.2.3 <code>EDID Structure Version</code> / <code>Revision</code></h5><table>
+<thead>
+<tr>
+<th>字节</th>
+<th>EDID版本及修改</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12H</td>
+<td>版本号</td>
+<td></td>
+</tr>
+<tr>
+<td>13H</td>
+<td>修改号</td>
+<td></td>
+</tr>
+</tbody></table>
+<h5 id="2-2-4-Basic-Display-Parameters-Features"><a href="#2-2-4-Basic-Display-Parameters-Features" class="headerlink" title="2.2.4 Basic Display Parameters / Features"></a>2.2.4 <code>Basic Display Parameters</code> / <code>Features</code></h5><table>
+<thead>
+<tr>
+<th>5</th>
+<th>字节</th>
+<th>基本的显示参数/特征</th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>14H</td>
+<td>1</td>
+<td>视频信号定义</td>
+<td>见下表</td>
+</tr>
+<tr>
+<td>15H</td>
+<td>1</td>
+<td>最大水平图像尺寸</td>
+<td>cm</td>
+</tr>
+<tr>
+<td>16H</td>
+<td>1</td>
+<td>最大垂直图像尺寸</td>
+<td>cm</td>
+</tr>
+<tr>
+<td>17H</td>
+<td>1</td>
+<td>显示传输特性（Gamma）</td>
+<td>(gamma x 100)-100,[1.00→3.55]</td>
+</tr>
+<tr>
+<td>18H</td>
+<td>1</td>
+<td>电源管理标准（DPMS）</td>
+<td>见下表</td>
+</tr>
+</tbody></table>
+<p>视频信号定义：</p>
+<table>
+<thead>
+<tr>
+<th>字节</th>
+<th>位</th>
+<th>特点支持</th>
+<th>详细描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18H</td>
+<td>7</td>
+<td>Standby待机</td>
+<td>是否支持Standby功能</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Suspend挂起</td>
+<td>是否支持Suspend功能</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Active Off/VeryLow Power</td>
+<td>是否支持Off Mode功能</td>
+<td></td>
+</tr>
+<tr>
+<td>[4:3]</td>
+<td>显示类型[4:3]</td>
+<td>Bit4 Bit3 解释    0 0  黑白/灰度显示0 1  RGB颜色显示1 0  非RGB多彩色显示，如RGY1  1  没有定义</td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td>标准默认颜色空间sRGB</td>
+<td>如果置1，显示将使用默认的颜色空间sRGB作为基色</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td>推荐分辨率模式</td>
+<td>如果置1，推荐分辨率为第一个详细描述的时序（Detailed Timing）</td>
+<td></td>
+</tr>
+<tr>
+<td>0</td>
+<td>支持GTF</td>
+<td>如果置1，支持GTF标准分辨率</td>
+<td></td>
+</tr>
+</tbody></table>
+<h5 id="2-2-5-Color-Characteristics"><a href="#2-2-5-Color-Characteristics" class="headerlink" title="2.2.5 Color Characteristics"></a>2.2.5 <code>Color Characteristics</code></h5><table>
+<thead>
+<tr>
+<th>字节</th>
+<th>颜色特征</th>
+<th>基于CIE出版15.2测定空间</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>19H</td>
+<td>Red / Green Low Bits红绿场xy坐标低2位值</td>
+<td>Rx1 Rx0 Ry1 Ry0Gx1 Gx0 Gy1 Gy0</td>
+</tr>
+<tr>
+<td>1AH</td>
+<td>Blue / White Low Bits蓝白场xy坐标低2位值</td>
+<td>Bx1 Bx0 By1 By0Wx1 Wx0 Wy1 Wy0</td>
+</tr>
+<tr>
+<td>1BH</td>
+<td>Red_x红场画面ｘ坐标</td>
+<td>Red_x bits 9 →2</td>
+</tr>
+<tr>
+<td>1CH</td>
+<td>Red_y红场画面y坐标</td>
+<td>Red_y bits 9 →2</td>
+</tr>
+<tr>
+<td>1DH</td>
+<td>Green_x绿场画面ｘ坐标</td>
+<td>Green_x bits 9 →2</td>
+</tr>
+<tr>
+<td>1EH</td>
+<td>Green_y绿场画面y坐标</td>
+<td>Green_y bits 9 →2</td>
+</tr>
+<tr>
+<td>1FH</td>
+<td>Blue_x蓝场画面ｘ坐标</td>
+<td>Blue_x bits 9 →2</td>
+</tr>
+<tr>
+<td>20H</td>
+<td>Blue_y蓝场画面y坐标</td>
+<td>Blue_y bits 9 →2</td>
+</tr>
+<tr>
+<td>21H</td>
+<td>White_x白场画面x坐标</td>
+<td>White_x bits 9 →2</td>
+</tr>
+<tr>
+<td>22H</td>
+<td>White_y白场画面y坐标</td>
+<td>White_y bits 9 →2</td>
+</tr>
+</tbody></table>
+<h5 id="2-2-6-Established-Timings"><a href="#2-2-6-Established-Timings" class="headerlink" title="2.2.6 Established Timings"></a>2.2.6 <code>Established Timings</code></h5><p><code>Established Timings</code>（内建时序，描述了分辨率和刷新率）表示显示器是否支持一些通用时序。若支持，则相应的分辨率位为1。</p>
+<table>
+<thead>
+<tr>
+<th>字节</th>
+<th>位</th>
+<th>描述</th>
+<th>信源</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>23H</td>
+<td>7</td>
+<td>720 x 400 @ 70Hz</td>
+<td>IBM, VGA</td>
+</tr>
+<tr>
+<td>6</td>
+<td>720 x 400 @ 88Hz</td>
+<td>IBM, XGA2</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>640 x 480 @ 60Hz</td>
+<td>IBM, VGA</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>640 x 480 @ 67Hz</td>
+<td>Apple, Mac II</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>640 x 480 @ 72Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td>640 x 480 @ 75Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td>800 x 600 @ 56Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>0</td>
+<td>800 x 600 @ 60Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>24H</td>
+<td>7</td>
+<td>800 x 600 @ 72Hz</td>
+<td>VESA</td>
+</tr>
+<tr>
+<td>6</td>
+<td>800 x 600 @ 75Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>832 x 624 @ 75H z</td>
+<td>Apple, Mac II</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>1024 x 768 @ 87Hz(I)</td>
+<td>IBM</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>1024 x 768 @ 60Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td>1024 x 768 @ 70Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td>1024 x 768 @ 75Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>0</td>
+<td>1280 x 1024 @ 75Hz</td>
+<td>VESA</td>
+<td></td>
+</tr>
+<tr>
+<td>25H</td>
+<td>7</td>
+<td>1152 x 870 @ 75Hz</td>
+<td>Apple, Mac II</td>
+</tr>
+<tr>
+<td>6-0</td>
+<td>保留</td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p>比如：<code>0x2F 0xCF 0x00</code>表示的含义如下：</p>
+<ul>
+<li><p><code>640 x 480 @ 60Hz (IBM, VGA)</code> ;</p>
+</li>
+<li><p><code>640 x 480 @ 72Hz (VESA)</code>;</p>
+</li>
+<li><p><code>640 x 480 @ 75Hz (VESA)</code>;</p>
+</li>
+<li><p><code>800 x 600 @ 56Hz (VESA)</code> ;</p>
+</li>
+<li><p><code>800 x 600 @ 60Hz (VESA)</code>;</p>
+</li>
+<li><p><code>800 x 600 @ 72Hz (VESA)</code>;</p>
+</li>
+<li><p><code>800 x 600 @ 75Hz (VESA)</code>;</p>
+</li>
+<li><p><code>1024 x 768 @ 60Hz (VESA)</code> ;</p>
+</li>
+<li><p><code>1024 x 768 @ 70Hz(VESA)</code>;</p>
+</li>
+<li><p><code>1024 x 768 @ 75Hz (VESA)</code> ;</p>
+</li>
+<li><p><code>1280 x 1024 @ 75Hz (VESA)</code>；</p>
+</li>
+</ul>
+<h5 id="2-2-7-Standard-Timings"><a href="#2-2-7-Standard-Timings" class="headerlink" title="2.2.7 Standard Timings"></a>2.2.7 <code>Standard Timings</code></h5><p>标准时序是对内建时序的扩充，最多可描述8个时序，每2个字节描述一种时序，这些时序都没有包含<code>Established Timings</code>中；</p>
+<table>
+<thead>
+<tr>
+<th>字节</th>
+<th>位</th>
+<th>描述</th>
+<th>源</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>26H</td>
+<td></td>
+<td>（行有效像素/8）-31</td>
+<td></td>
+</tr>
+<tr>
+<td>27H</td>
+<td>7,6       5-0</td>
+<td>Aspect RatioBit7 Bit6 生效00  1:101  4:310  5:411  16:9刷新率-60</td>
+<td>Aspect Ratio=行像素/列像素       范围是;60-123Hz</td>
+</tr>
+<tr>
+<td>28H-29H</td>
+<td></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>2AH-2BH</td>
+<td></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>2CH-2DH</td>
+<td></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>2EH-2FH</td>
+<td></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>30H-21H</td>
+<td></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>32H-33H</td>
+<td></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>34H-35H</td>
+<td></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+</tbody></table>
+<p>比如：<code>0x71 0x40</code>表示的含义如下：</p>
+<ul>
+<li>行有效像素为：<code>(0x71+31)*8=1152</code>;</li>
+<li>宽高比为：<code>4:3</code>，所以列有效像素为<code>1152*3/4=864</code>；</li>
+<li>刷新率为：<code>0+60=60Hz</code>；</li>
+</ul>
+<h5 id="2-2-8-Detailed-Timings"><a href="#2-2-8-Detailed-Timings" class="headerlink" title="2.2.8 Detailed Timings"></a>2.2.8 <code>Detailed Timings</code></h5><p>详细时序这个区域可以说是整个<code>EDID</code>中和我们关系最密切，也是我们需要了解最多和改动最频繁的区域。</p>
+<p>它分为4个块（Block），每个块占用18个字节，一共72个字节。</p>
+<p>每个块既可以是一个时序说明（<code>Timing Descriptor</code>）也可以是一个显示器描述符（<code>Monitor Descriptor</code>）。</p>
+<p>需要注意的是：<code>Block 1</code>必须是时序说明；</p>
+<ul>
+<li>对于<code>EDID</code> 1.4及以上版本，第一个详细时序它描述的是显示器的最佳时序；</li>
+<li>对于<code>EDID</code> 1.4以下版本，如果字节<code>0x18</code> 位[1]的值为1则表示第一个详细时序它描述的是显示器的最佳时序。</li>
+</ul>
+<p>时序说明：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/timings.png" alt="timings"></p>
+<p>显示器描述符：</p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/display-desc.png" alt="display-desc"></p>
+<p><img src= "/img/loading.gif" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/Android_Display_System/Android11_Drm07/display-desc2.png" alt="display-desc2"></p>
+<h5 id="2-2-9-Extension-Flag"><a href="#2-2-9-Extension-Flag" class="headerlink" title="2.2.9 Extension Flag"></a>2.2.9 <code>Extension Flag</code></h5><p>扩展标志：除主块128字节外，如果有扩展块则该字节置1，<code>VGA</code>和<code>DVI</code>的值为0，<code>HDMI</code>的值为1。</p>
+<h5 id="2-2-10-Checksum"><a href="#2-2-10-Checksum" class="headerlink" title="2.2.10 Checksum"></a>2.2.10 <code>Checksum</code></h5><p>校验和：使前127字节加上此字节等于0。</p>
+<p><strong>参考文章</strong></p>
+<p><strong>[1] [<code>Rockchip_Developer_Guide_HDMI_CN</code>]</strong></p>
+<p><strong>[2] <a target="_blank" rel="noopener" href="https://www.pianshen.com/article/17262174800/"><code>Linux</code>驱动学习–<code>HDMI</code>开发(一) 相关协议及传输原理的介绍</a></strong></p>
+<p><strong>[3] <a target="_blank" rel="noopener" href="https://www.freesion.com/article/69981536380/"><code>LINUX</code>驱动学习–<code>HDMI</code>开发(二)<code>HDMI</code>驱动源码分析(<code>RK</code>平台)</a></strong></p>
+<p><strong>[4] <a target="_blank" rel="noopener" href="https://blog.csdn.net/yangchao315/category_12209107.html"><code>HDMI</code>协议介绍</a></strong></p>
+<p><strong>[5] <a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_42693097/article/details/128621828"><code>HDMI</code>接口电路设计</a></strong></p>
+<p><strong>[7] <a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_52215423/article/details/131889537"><code>HDMI</code>接口协议</a></strong></p>
+<p><strong>[8] <a target="_blank" rel="noopener" href="https://www.cnblogs.com/amxiang/p/16986146.html"><code>HDMI</code>协议1.4 好文推荐！</a></strong></p>
+<p><strong>[9] <a target="_blank" rel="noopener" href="https://codeleading.com/article/84455064248/"><code>DRM</code>框架介绍及基于<code>DRM</code>框架的<code>HDMI</code>开发</a></strong></p>
+<p><strong>[10] <a target="_blank" rel="noopener" href="https://www.synopsys.com/zh-cn/designware-ip/interface-ip/hdmi.html"><code>DesignWare HDMI IP</code> 解决方案</a></strong></p>
+<p><strong>[11] <a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_34594095/article/details/109525678"><code>LVDS+HDMI</code>输出特殊分辨率<code>800*1280</code>竖屏</a></strong></p>
+<p><strong>[12] <a target="_blank" rel="noopener" href="https://blog.51cto.com/u_15162069/2854887"><code>Linux DRM</code>那些事-<code>HDMI</code>接口<code>EDID</code>获取</a></strong></p>
+<p><strong>[13] <a target="_blank" rel="noopener" href="https://blog.csdn.net/varistor/article/details/120882835"><code>EDID</code>的简介和解析</a></strong></p>
+<p><strong>[14] <a target="_blank" rel="noopener" href="https://www.cnblogs.com/fire909090/p/10362144.html">什么是<code>EDID</code>，<code>EDID</code>能做什么，<code>EDID</code>基本介绍</a></strong></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">zhoujinjian</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://zhoujinjian.com/posts/20240224/">https://zhoujinjian.com/posts/20240224/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://zhoujinjian.com" target="_blank">zhoujinjian</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Linux/">Linux</a></div><div class="post_share"><div class="social-share" data-image="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.63.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/posts/20240225/"><img class="prev-cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.64.jpg" onerror="onerror=null;src='/img/404.jpg'"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序</div></div></a></div><div class="next-post pull-right"><a href="/posts/20240223/"><img class="next-cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.62.jpg" onerror="onerror=null;src='/img/404.jpg'"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/posts/20210310/" title="Android 10 Display System源码分析（1）：LCD显示原理（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.22.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-03-10</div><div class="title">Android 10 Display System源码分析（1）：LCD显示原理（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210410/" title="Android 10 Display System源码分析（2）：Display System 精彩世界（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.23.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-04-10</div><div class="title">Android 10 Display System源码分析（2）：Display System 精彩世界（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210510/" title="Android 10 Display System源码分析（3）：U-boot Display 显示过程源码分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.24.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-05-10</div><div class="title">Android 10 Display System源码分析（3）：U-boot Display 显示过程源码分析（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210610/" title="Android 10 Display System源码分析（4）：DRM/KMS分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.25.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-06-10</div><div class="title">Android 10 Display System源码分析（4）：DRM/KMS分析（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210710/" title="Android 10 Display System源码分析（5）：ModeTest分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.26.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-07-10</div><div class="title">Android 10 Display System源码分析（5）：ModeTest分析（Android 10.0 && Kernel 4.15）</div></div></a></div><div><a href="/posts/20210810/" title="Android 10 Display System源码分析（6）：【DRM/KMS】HWComposer && Gralloc2 分析（Android 10.0 && Kernel 4.15）"><img class="cover" data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.27.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-08-10</div><div class="title">Android 10 Display System源码分析（6）：【DRM/KMS】HWComposer && Gralloc2 分析（Android 10.0 && Kernel 4.15）</div></div></a></div></div></div></div><div class="aside_content" id="aside_content"><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="card-content"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81HDMI%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.</span> <span class="toc-text">一、HDMI介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-1-%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 概述</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#1-1-1-%E7%89%88%E6%9C%AC%E5%8F%98%E6%9B%B4"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1.1 版本变更</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#1-1-2-%E6%9C%AF%E8%AF%AD"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.1.2 术语</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#1-2-HDMI%E6%A1%86%E5%9B%BE"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 HDMI框图</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#1-2-1-%E7%89%A9%E7%90%86%E7%BB%93%E6%9E%84"><span class="toc-number">1.2.1.</span> <span class="toc-text">1.2.1 物理结构</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#1-2-2-%E5%BC%95%E8%84%9A%E5%88%86%E5%B8%83"><span class="toc-number">1.2.2.</span> <span class="toc-text">1.2.2 引脚分布</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#1-3-TMDS%E5%8D%8F%E8%AE%AE"><span class="toc-number">1.3.</span> <span class="toc-text">1.3 TMDS协议</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#1-3-1-TMDS%E9%93%BE%E8%B7%AF"><span class="toc-number">1.3.1.</span> <span class="toc-text">1.3.1 TMDS链路</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#1-3-2-TMDS%E4%BC%A0%E8%BE%93%E5%91%A8%E6%9C%9F"><span class="toc-number">1.3.2.</span> <span class="toc-text">1.3.2 TMDS传输周期</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#1-4-%E7%94%B5%E8%B7%AF%E5%8E%9F%E7%90%86%E5%9B%BE"><span class="toc-number">1.4.</span> <span class="toc-text">1.4 电路原理图</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81EDID"><span class="toc-number">2.</span> <span class="toc-text">二、EDID</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-%E6%A6%82%E8%BF%B0"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 概述</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-%E4%B8%BB%E5%9D%97%E8%AF%A6%E8%A7%A3"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 主块详解</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-1-Header"><span class="toc-number">2.2.1.</span> <span class="toc-text">2.2.1 Header</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-2-Vendor-Product-Identification"><span class="toc-number">2.2.2.</span> <span class="toc-text">2.2.2 Vendor &#x2F; Product Identification</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-3-EDID-Structure-Version-Revision"><span class="toc-number">2.2.3.</span> <span class="toc-text">2.2.3 EDID Structure Version &#x2F; Revision</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-4-Basic-Display-Parameters-Features"><span class="toc-number">2.2.4.</span> <span class="toc-text">2.2.4 Basic Display Parameters &#x2F; Features</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-5-Color-Characteristics"><span class="toc-number">2.2.5.</span> <span class="toc-text">2.2.5 Color Characteristics</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-6-Established-Timings"><span class="toc-number">2.2.6.</span> <span class="toc-text">2.2.6 Established Timings</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-7-Standard-Timings"><span class="toc-number">2.2.7.</span> <span class="toc-text">2.2.7 Standard Timings</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-8-Detailed-Timings"><span class="toc-number">2.2.8.</span> <span class="toc-text">2.2.8 Detailed Timings</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-9-Extension-Flag"><span class="toc-number">2.2.9.</span> <span class="toc-text">2.2.9 Extension Flag</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-10-Checksum"><span class="toc-number">2.2.10.</span> <span class="toc-text">2.2.10 Checksum</span></a></li></ol></li></ol></li></ol></div></div></div><div class="card-widget card-recent-post"><div class="card-content"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/posts/20240225/" title="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.64.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序"/></a><div class="content"><a class="title" href="/posts/20240225/" title="Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序">Android 11 Display System V2（8）：Rockchip RK3399 - DRM HDMI驱动程序</a><time datetime="2024-02-24T16:00:00.000Z" title="发表于 2024-02-25 00:00:00">2024-02-25</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240224/" title="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.63.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍"/></a><div class="content"><a class="title" href="/posts/20240224/" title="Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍">Android 11 Display System V2（7）：Rockchip RK3399 - DRM HDMI介绍</a><time datetime="2024-02-23T16:00:00.000Z" title="发表于 2024-02-24 00:00:00">2024-02-24</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240223/" title="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.62.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识"/></a><div class="content"><a class="title" href="/posts/20240223/" title="Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识">Android 11 Display System V2（6）：Rockchip RK3399 - DRM encoder、bridge、connector基础知识</a><time datetime="2024-02-22T16:00:00.000Z" title="发表于 2024-02-23 00:00:00">2024-02-23</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240222/" title="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.61.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识"/></a><div class="content"><a class="title" href="/posts/20240222/" title="Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识">Android 11 Display System V2（5）：Rockchip RK3399 - DRM gem基础知识</a><time datetime="2024-02-21T16:00:00.000Z" title="发表于 2024-02-22 00:00:00">2024-02-22</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/20240221/" title="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识"><img data-lazy-src="https://raw.githubusercontent.com/zhoujinjianzz/zhoujinjian.com.images/master/post.cover.pictures/bing-wallpaper-2018.04.60.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识"/></a><div class="content"><a class="title" href="/posts/20240221/" title="Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识">Android 11 Display System V2（4）：Rockchip RK3399 - DRM gem基础知识</a><time datetime="2024-02-20T16:00:00.000Z" title="发表于 2024-02-21 00:00:00">2024-02-21</time></div></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By zhoujinjian</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js"></script><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module" defer></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload/dist/lazyload.iife.min.js"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/js/calendar.js"></script><script src="/js/languages.js"></script><script src="/js/fishes.js"></script><script>(function(){
+  const bp = document.createElement('script');
+  const curProtocol = window.location.protocol.split(':')[0];
+  if (curProtocol === 'https'){
+  bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+  bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+  bp.dataset.pjax = ''
+  const s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(bp, s);
+})()</script></div></body></html>
